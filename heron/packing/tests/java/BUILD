@@ -6,7 +6,8 @@ packing_deps_files = [
     "//heron/spi/src/java:common-spi-java",
     "//heron/spi/src/java:packing-spi-java",
     "//heron/packing/src/java:roundrobin-packing",
-    "//heron/packing/src/java:binpacking-packing"
+    "//heron/packing/src/java:binpacking-packing",
+    "//heron/packing/src/java:graphpartitioning-packing"
 ]
 
 test_deps_files = [
@@ -30,6 +31,7 @@ binpacking_deps_files = \
         "//heron/spi/src/java:utils-spi-java",
     ]
 
+<<<<<<< HEAD
 java_library(
     name = "packing-utils",
     srcs = glob(
@@ -40,6 +42,15 @@ java_library(
         "//third_party/java:junit4",
     ],
 )
+
+graphpartitioning_deps_files = \
+    heron_java_proto_files() + \
+    packing_deps_files + \
+    test_deps_files + [
+        "//heron/api/src/java:api-java",
+        "//heron/spi/src/java:utils-spi-java",
+     ]
+
 
 java_test(
     name = "RoundRobinPackingTest",
@@ -65,6 +76,15 @@ java_test(
         ["**/binpacking/FirstFitDecreasingPackingTest.java"]
     ),
     deps = binpacking_deps_files,
+    size = "small",
+)
+
+java_test(
+    name = "GraphPartitioningPackingTest",
+    srcs = glob(
+        ["**/graphpartitioning/GraphPartitioningPackingTest.java"]
+    ),
+    deps = graphpartitioning_deps_files,
     size = "small",
 )
 

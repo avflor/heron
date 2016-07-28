@@ -44,8 +44,16 @@ public class Resource {
     return cpu;
   }
 
+  public void setCpu(double cpu) {
+    this.cpu = cpu;
+  }
+
   public long getRam() {
     return ram;
+  }
+
+  public void setRam(long ram) {
+    this.ram = ram;
   }
 
   public long getDisk() {
@@ -54,6 +62,10 @@ public class Resource {
 
   public Resource cloneWithRam(long newRam) {
     return new Resource(this.getCpu(), newRam, this.getDisk());
+  }
+
+  public void setDisk(long disk) {
+    this.disk = disk;
   }
 
   @Override

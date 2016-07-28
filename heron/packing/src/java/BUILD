@@ -6,6 +6,8 @@ packing_deps_files = [
     "//heron/spi/src/java:common-spi-java",
     "//heron/spi/src/java:packing-spi-java",
     "@com_google_guava_guava//jar",
+    "//third_party/java:junit4",
+    "//heron/common/src/java:common-java",
 ]
 
 nullpacking_deps_files = \
@@ -27,6 +29,14 @@ binpacking_deps_files = \
         "//heron/spi/src/java:statemgr-spi-java",
         "//heron/spi/src/java:utils-spi-java",
     ]
+
+graphpartitioning_deps_files = \
+     heron_java_proto_files() + \
+     packing_deps_files + [
+         "//heron/api/src/java:api-java",
+         "//heron/spi/src/java:statemgr-spi-java",
+         "//heron/spi/src/java:utils-spi-java",
+     ]
 
 java_library(
     name = 'null-packing',
@@ -82,5 +92,24 @@ genrule(
     name = "heron-binpacking-packing",
     srcs = [":binpacking-packing-unshaded_deploy.jar"],
     outs = ["heron-binpacking-packing.jar"],
+    cmd  = "cp $< $@",
+)
+
+java_library(
+    name='graphpartitioning-packing',
+    srcs = glob(["**/graphpartitioning/**/*.java","**/packing/*.java"]),
+    deps = graphpartitioning_deps_files,
+)
+
+java_binary(
+    name='graphpartitioning-packing-unshaded',
+    srcs = glob(["**/graphpartitioning/**/*.java","**/packing/*.java"]),
+    deps = graphpartitioning_deps_files,
+)
+
+genrule(
+    name = "heron-graphpartitioning-packing",
+    srcs = [":graphpartitioning-packing-unshaded_deploy.jar"],
+    outs = ["heron-graphpartitioning-packing.jar"],
     cmd  = "cp $< $@",
 )
