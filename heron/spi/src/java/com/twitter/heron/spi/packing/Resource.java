@@ -44,12 +44,24 @@ public class Resource {
     return cpu;
   }
 
+  public void setCpu(double cpu) {
+    this.cpu = cpu;
+  }
+
   public long getRam() {
     return ram;
   }
 
+  public void setRam(long ram) {
+    this.ram = ram;
+  }
+
   public long getDisk() {
     return disk;
+  }
+
+  public void setDisk(long disk) {
+    this.disk = disk;
   }
 
   @Override
