@@ -97,13 +97,15 @@ genrule(
 
 java_library(
     name='graphpartitioning-packing',
-    srcs = glob(["**/graphpartitioning/**/*.java","**/packing/*.java"]),
+    srcs = glob(["**/graphpartitioning/**/*.java","**/packing/*.java",
+    "**/binpacking/**/*.java"]),
     deps = graphpartitioning_deps_files,
 )
 
 java_binary(
     name='graphpartitioning-packing-unshaded',
-    srcs = glob(["**/graphpartitioning/**/*.java","**/packing/*.java"]),
+    srcs = glob(["**/graphpartitioning/**/*.java","**/packing/*.java",
+    "**/binpacking/**/*.java"]),
     deps = graphpartitioning_deps_files,
 )
 

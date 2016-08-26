@@ -49,6 +49,7 @@ graphpartitioning_deps_files = \
     test_deps_files + [
         "//heron/api/src/java:api-java",
         "//heron/spi/src/java:utils-spi-java",
+        "//heron/instance/src/java:instance-java",
      ]
 
 
