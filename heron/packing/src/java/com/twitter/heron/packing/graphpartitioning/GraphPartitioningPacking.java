@@ -19,11 +19,14 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import com.twitter.heron.api.generated.TopologyAPI;
+import com.twitter.heron.packing.binpacking.FirstFitDecreasingPacking;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Constants;
 import com.twitter.heron.spi.common.Context;
@@ -48,7 +51,9 @@ public class GraphPartitioningPacking implements IPacking {
   protected long maxContainerRam;
   protected double maxContainerCpu;
   protected long maxContainerDisk;
-  protected int numAdjustments;
+  protected int noContainers = 0;
+  protected String path;
+  protected PackingPlan ffdplan;
 
   protected HashMap<String, ArrayList<Integer>> componentVertices;
 
@@ -66,8 +71,8 @@ public class GraphPartitioningPacking implements IPacking {
   }
 
   @Override
-  public void initialize(Config config, Config runtime) {
-    this.topology = com.twitter.heron.spi.utils.Runtime.topology(runtime);
+  public void initialize(Config config, TopologyAPI.Topology inputTopology) {
+    this.topology = inputTopology;
     this.instanceRamDefault = Context.instanceRam(config);
     this.instanceCpuDefault = Context.instanceCpu(config).doubleValue();
     this.instanceDiskDefault = Context.instanceDisk(config);
@@ -85,26 +90,34 @@ public class GraphPartitioningPacking implements IPacking {
     this.maxContainerDisk = Long.parseLong(TopologyUtils.getConfigWithDefault(
         topologyConfig, com.twitter.heron.api.Config.TOPOLOGY_CONTAINER_MAX_DISK_HINT,
         Long.toString(instanceDiskDefault * DEFAULT_NUMBER_INSTANCES_PER_CONTAINER)));
+
     createFullTopologyGraph();
+
+    FirstFitDecreasingPacking ffdpacking = new FirstFitDecreasingPacking();
+    ffdpacking.initialize(config, topology);
+    ffdplan = ffdpacking.pack();
+    this.noContainers = ffdplan.getContainers().size();
+
+    this.path = System.getProperty("java.io.tmpdir");
+    System.out.println("OOO " + path);
+
   }
 
   @Override
   public PackingPlan pack() {
-    int adjustments = this.numAdjustments;
+    if (this.noContainers == 1) {
+      return ffdplan;
+    }
     // Get the instances using a resource compliant round robin allocation
-    Map<String, List<String>> graphPartitioningAllocation
+    Map<Integer, List<String>> graphPartitioningAllocation
         = getGraphPartitioningAllocation();
 
     while (graphPartitioningAllocation == null) {
-      if (this.numAdjustments > adjustments) {
-        adjustments++;
-        graphPartitioningAllocation = getGraphPartitioningAllocation();
-      } else {
-        return null;
-      }
+      noContainers++;
+      graphPartitioningAllocation = getGraphPartitioningAllocation();
     }
     // Construct the PackingPlan
-    Map<String, PackingPlan.ContainerPlan> containerPlanMap = new HashMap<>();
+    Set<PackingPlan.ContainerPlan> containerPlans = new HashSet<>();
     Map<String, Long> ramMap = TopologyUtils.getComponentRamMapConfig(topology);
 
     List<TopologyAPI.Config.KeyValue> topologyConfig = topology.getTopologyConfig().getKvsList();
@@ -116,9 +129,9 @@ public class GraphPartitioningPacking implements IPacking {
     long topologyDisk = 0;
     double topologyCpu = 0.0;
 
-    for (Map.Entry<String, List<String>> entry : graphPartitioningAllocation.entrySet()) {
+    for (Map.Entry<Integer, List<String>> entry : graphPartitioningAllocation.entrySet()) {
 
-      String containerId = entry.getKey();
+      int containerId = entry.getKey();
       List<String> instanceList = entry.getValue();
 
       long containerRam = 0;
@@ -126,7 +139,7 @@ public class GraphPartitioningPacking implements IPacking {
       double containerCpu = 0;
 
       // Calculate the resource required for single instance
-      Map<String, PackingPlan.InstancePlan> instancePlanMap = new HashMap<>();
+      Set<PackingPlan.InstancePlan> instancePlans = new HashSet<>();
 
       for (String instanceId : instanceList) {
         long instanceRam = 0;
@@ -153,7 +166,7 @@ public class GraphPartitioningPacking implements IPacking {
                 getComponentName(instanceId),
                 resource);
         // Insert it into the map
-        instancePlanMap.put(instanceId, instancePlan);
+        instancePlans.add(instancePlan);
       }
 
       containerCpu += (paddingPercentage * containerCpu) / 100;
@@ -164,25 +177,23 @@ public class GraphPartitioningPacking implements IPacking {
           new Resource(Math.round(containerCpu), containerRam, containerDiskInBytes);
 
       PackingPlan.ContainerPlan containerPlan =
-          new PackingPlan.ContainerPlan(containerId, instancePlanMap, resource);
+          new PackingPlan.ContainerPlan(containerId, instancePlans, resource);
 
-      containerPlanMap.put(containerId, containerPlan);
+      containerPlans.add(containerPlan);
       topologyRam += containerRam;
       topologyCpu += Math.round(containerCpu);
       topologyDisk += containerDiskInBytes;
     }
 
-    // Take the heron internal container into account and the application master for YARN
-    // scheduler
-    topologyRam += instanceRamDefault;
-    topologyDisk += instanceDiskDefault;
-    topologyCpu += instanceCpuDefault;
+    PackingPlan plan = new PackingPlan(topology.getId(), containerPlans);
 
-    Resource resource = new Resource(
-        topologyCpu, topologyRam, topologyDisk);
-
-    PackingPlan plan = new PackingPlan(topology.getId(), containerPlanMap, resource);
-
+    LOG.info("Created a packing plan with " + containerPlans.size() + " containers");
+    Object[] containerPlansArray = containerPlans.toArray();
+    for (int i = 0; i < containerPlans.size(); i++) {
+      LOG.info("Container  " + ((PackingPlan.ContainerPlan) containerPlansArray[i]).getId()
+          + " consists of "
+          + ((PackingPlan.ContainerPlan) containerPlansArray[i]).getInstances().toString());
+    }
     return plan;
   }
 
@@ -201,7 +212,7 @@ public class GraphPartitioningPacking implements IPacking {
       String component = spout.getComp().getName();
       int cnt = createVertices(tGraph, numVertices, parallelismMap, ramMap, component, 0);
       numVertices += cnt;
-      System.out.println(component + " " + 0 + " " + cnt);
+      //System.out.println(component + " " + 0 + " " + cnt);
     }
     int level = 0;
     for (TopologyAPI.Bolt.Builder bolt : topology.toBuilder().getBoltsBuilderList()) {
@@ -209,14 +220,14 @@ public class GraphPartitioningPacking implements IPacking {
       level++;
       int cnt = createVertices(tGraph, numVertices, parallelismMap, ramMap, component, level);
       numVertices += cnt;
-      System.out.println(component + " " + level + " " + cnt);
+      //System.out.println(component + " " + level + " " + cnt);
     }
     for (TopologyAPI.Bolt.Builder bolt : topology.toBuilder().getBoltsBuilderList()) {
       String name = bolt.getComp().getName();
       // To get the parent's component to construct a graph of topology structure
       for (TopologyAPI.InputStream inputStream : bolt.getInputsList()) {
         String parent = inputStream.getStream().getComponentName();
-        System.out.println(name + " " + parent + " " + inputStream.getGtype());
+        //System.out.println(name + " " + parent + " " + inputStream.getGtype());
         //connect instances of parents with instances of children
         ArrayList<Integer> parentVertices = componentVertices.get(parent);
         ArrayList<Integer> childVertices = componentVertices.get(name);
@@ -229,11 +240,32 @@ public class GraphPartitioningPacking implements IPacking {
   private void connectVertices(TopologyGraph tGraph,
                                ArrayList<Integer> parent, ArrayList<Integer> child,
                                TopologyAPI.Grouping groupingType) {
-    if (groupingType.getNumber() == 1) { //shuffle grouping
+    if (groupingType.getNumber() != 7) {
       for (int i = 0; i < parent.size(); i++) {
         for (int j = 0; j < child.size(); j++) {
           tGraph.addEdge(new Edge(parent.get(i), child.get(j), 1));
-          System.out.println("edge " + " " + parent.get(i) + " " + child.get(j));
+          LOG.info("Edge: " + " " + parent.get(i) + " " + child.get(j));
+        }
+      }
+    } else { //custom grouping
+      float ratio = parent.size() / (float) child.size();
+      if (ratio >= 1) {
+        // ratio sources connect to 1 destination
+        for (int i = 0; i < parent.size(); i++) {
+          int dest = i / (int) ratio;
+          tGraph.addEdge(new Edge(parent.get(i), child.get(dest), 1));
+          LOG.info("Edge: " + " " + parent.get(i) + " " + child.get(dest));
+        }
+      } else {
+        //every source to 1/ratio destinations
+        int numDest = (int) (1 / ratio);
+        for (int i = 0; i < parent.size(); i++) {
+          int dest = i * numDest;
+          for (int j = dest; j <= dest + numDest - 1; j++) {
+            tGraph.addEdge(new Edge(parent.get(i), child.get(j), 1));
+            LOG.info("Edge: " + " "
+                + parent.get(i) + " " + child.get(j) + " " + numDest);
+          }
         }
       }
     }
@@ -273,9 +305,19 @@ public class GraphPartitioningPacking implements IPacking {
     return rs;
   }
 
-  public void evaluatePackingPlan(TopologyGraph t, int noContainers) {
-    String file = System.getProperty("user.dir") + "/" + t.getName() + ".part." + noContainers;
-    HashMap<String, Resource> plan = new HashMap<String, Resource>();
+  /**
+   * Evaluate the results of the mets library
+   *
+   * @param t TopologyGraph
+   * @return Assignment of the instances of each component to the containers
+   */
+
+  public HashMap<String, ArrayList<Integer>> evaluateResults(TopologyGraph t) {
+    String file = path + "/" + t.getName() + ".part." + noContainers;
+    HashMap<Integer, Resource> containerResourceAllocation = new HashMap<Integer, Resource>();
+    HashMap<String, ArrayList<Integer>> componentAssignment
+        = new HashMap<String, ArrayList<Integer>>();
+
     try {
       FileReader inFile = new FileReader(file);
       BufferedReader br = new BufferedReader(inFile);
@@ -283,38 +325,87 @@ public class GraphPartitioningPacking implements IPacking {
       int lineNo = 1;
       while ((s = br.readLine()) != null) {
         int containerId = Integer.parseInt(s);
-        String component = t.getVertex(lineNo).getComponent();
-        if (plan.containsKey(component)) {
-          Resource r = plan.get(component);
-          //continue from here
+        Vertex v = t.getVertex(lineNo);
+
+        //Update componentAssignment
+        ArrayList<Integer> containers = null;
+        if (componentAssignment.containsKey(v.getComponent())) {
+          containers = componentAssignment.get(v.getComponent());
+        } else {
+          containers = new ArrayList<>();
         }
-        System.out.println(containerId + " " + t.getVertex(lineNo).getComponent());
-        //this.getPlan()[containerId].addInstance(t.getVertex(lineNo));
+        containers.add(containerId);
+        componentAssignment.put(v.getComponent(), containers);
+
+        //Update container resources
+        if (containerResourceAllocation.containsKey(containerId)) {
+          Resource r = containerResourceAllocation.get(containerId);
+          r.setCpu(r.getCpu() + v.getVertexWeights().getCpu());
+          r.setRam(r.getRam() + v.getVertexWeights().getRam());
+          r.setDisk(r.getDisk() + v.getVertexWeights().getDisk());
+          containerResourceAllocation.put(containerId, r);
+        } else {
+          Resource r = new Resource(v.getVertexWeights().getCpu(), v.getVertexWeights().getRam(),
+              v.getVertexWeights().getDisk());
+          containerResourceAllocation.put(containerId, r);
+        }
+        //System.out.println(containerId + " " + t.getVertex(lineNo).getComponent());
         lineNo++;
       }
       inFile.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
+
+    String cmd1 = "rm " + path + "/" + t.getName();
+
+    String cmd2 = "rm " + path + "/" + t.getName() + ".part." + noContainers;
+
+    // System.out.println("LLL " + cmd);
+    try {
+      final Process p1 = Runtime.getRuntime().exec(cmd1);
+      p1.waitFor();
+      final Process p2 = Runtime.getRuntime().exec(cmd2);
+      p2.waitFor();
+    } catch (InterruptedException | IOException e) {
+      e.printStackTrace();
+    }
+
+    if (evaluateAllocation(containerResourceAllocation)) {
+      return componentAssignment;
+    } else {
+      return null;
+    }
+  }
+
+  public boolean evaluateAllocation(HashMap<Integer, Resource> containerResourceAllocation) {
+    for (Map.Entry<Integer, Resource> entry : containerResourceAllocation.entrySet()) {
+      Integer containerId = entry.getKey();
+      Resource r = entry.getValue();
+      //System.out.println(containerId + " " + r.getDisk() + " " + r.getCpu() + " " + r.getRam());
+      if (!isValidInstance(r)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
-   * Get the instances' allocation based on the First Fit Decreasing algorithm
+   * Get the instances' allocation based on GraphPartitioning
    *
    * @return Map &lt; containerId, list of InstanceId belonging to this container &gt;
    */
-  protected Map<String, List<String>> getGraphPartitioningAllocation() {
-    Map<String, List<String>> allocation = new HashMap<>();
+  protected Map<Integer, List<String>> getGraphPartitioningAllocation() {
+    Map<Integer, List<String>> allocation = new HashMap<>();
     Map<String, Integer> parallelismMap = TopologyUtils.getComponentParallelism(topology);
     //create graph
     TopologyGraph tGraph = createFullTopologyGraph();
     //create metis file
-    tGraph.createMetisfile();
-    //invoke library
+    tGraph.createMetisfile(path);
     String cmd = null;
-    int noContainers = 2;
-    cmd = "/home/avrilia/graphs/metis/bin/./gpmetis "
-        + System.getProperty("user.dir") + "/" + tGraph.getName() + " " + noContainers;
+
+    cmd = "/home/avrilia/graphs/metis/bin/./gpmetis  "
+        + path + "/" + tGraph.getName() + " " + noContainers;
     System.out.println("LLL " + cmd);
     try {
       final Process p = Runtime.getRuntime().exec(cmd);
@@ -322,33 +413,32 @@ public class GraphPartitioningPacking implements IPacking {
     } catch (InterruptedException | IOException e) {
       e.printStackTrace();
     }
-    evaluatePackingPlan(tGraph, 2);
-    //create and validate packingplan
-    //start over if needed.
-   /* ArrayList<RamRequirement> ramRequirements = getSortedRAMInstances();
+    //create the packing plan
+    HashMap<String, ArrayList<Integer>> componentAssignment = evaluateResults(tGraph);
 
-    if (ramRequirements == null) {
+    if (componentAssignment == null) {
       return null;
-    }
-    for (int i = 0; i < ramRequirements.size(); i++) {
-      String component = ramRequirements.get(i).getComponentName();
-      int numInstance = parallelismMap.get(component);
-      for (int j = 0; j < numInstance; j++) {
-        int containerId = placeFFDInstance(containers,
-            ramRequirements.get(i).getRamRequirement(),
-            instanceCpuDefault, instanceDiskDefault);
-        if (allocation.containsKey(getContainerId(containerId))) {
-          allocation.get(getContainerId(containerId)).
-              add(getInstanceId(containerId, component, globalTaskIndex, j));
-        } else {
-          ArrayList<String> instance = new ArrayList<>();
-          instance.add(getInstanceId(containerId, component, globalTaskIndex, j));
-          allocation.put(getContainerId(containerId), instance);
+    } else {
+      int globalTaskIndex = 1;
+      for (Map.Entry<String, ArrayList<Integer>> entry : componentAssignment.entrySet()) {
+        String component = entry.getKey();
+        ArrayList<Integer> containerIds = entry.getValue();
+
+        for (int j = 0; j < containerIds.size(); j++) {
+          int containerId = containerIds.get(j) + 1;
+          if (allocation.containsKey(containerId)) {
+            allocation.get(containerId).
+                add(getInstanceId(containerId, component, globalTaskIndex, j));
+          } else {
+            ArrayList<String> instance = new ArrayList<>();
+            instance.add(getInstanceId(containerId, component, globalTaskIndex, j));
+            allocation.put(containerId, instance);
+          }
+          globalTaskIndex++;
         }
-        globalTaskIndex++;
       }
-    }*/
-    return allocation;
+      return allocation;
+    }
   }
 
   /**
@@ -357,6 +447,7 @@ public class GraphPartitioningPacking implements IPacking {
    * @param instanceResources The resources allocated to the instance
    * @return true if the instance is valid, false otherwise
    */
+
   protected boolean isValidInstance(Resource instanceResources) {
 
     if (instanceResources.getRam() < MIN_RAM_PER_INSTANCE) {

@@ -14,18 +14,17 @@
 
 package com.twitter.heron.packing.graphpartitioning;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.twitter.heron.api.Config;
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.api.topology.TopologyBuilder;
+import com.twitter.heron.grouping.DirectMappingGrouping;
 import com.twitter.heron.packing.TestBolt;
 import com.twitter.heron.packing.TestSpout;
 import com.twitter.heron.spi.common.ClusterDefaults;
+import com.twitter.heron.spi.common.Constants;
 import com.twitter.heron.spi.common.Context;
 import com.twitter.heron.spi.common.Keys;
 import com.twitter.heron.spi.packing.PackingPlan;
@@ -41,6 +40,7 @@ public class GraphPartitioningPackingTest {
     com.twitter.heron.spi.common.Config config = com.twitter.heron.spi.common.Config.newBuilder()
         .put(Keys.topologyId(), topology.getId())
         .put(Keys.topologyName(), topology.getName())
+        //   .put("heron.scheduler.local.working.directory", "/home/avrilia/")
         .putAll(ClusterDefaults.getDefaults())
         .build();
 
@@ -53,36 +53,19 @@ public class GraphPartitioningPackingTest {
     this.instanceDiskDefault = Context.instanceDisk(config);
 
     GraphPartitioningPacking packing = new GraphPartitioningPacking();
-    packing.initialize(config, runtime);
+    packing.initialize(config, topology);
     PackingPlan output = packing.pack();
 
     return output;
   }
-  /**
-   * Test the scenario container level resource config are set
-   */
-  @Test
-  public void test() {
-    // Set topology protobuf
+
+
+  protected TopologyAPI.Topology getTopology3(Config conf) {
     TopologyBuilder topologyBuilder = new TopologyBuilder();
-    topologyBuilder.setSpout("test-spout", new TestSpout(), 2);
+    topologyBuilder.setSpout("test-spout", new TestSpout(), 6);
 
-    topologyBuilder.setBolt("test-bolt", new TestBolt(), 2).
-        shuffleGrouping("test-spout");
-
-    topologyBuilder.setBolt("test-bolt2", new TestBolt(), 2).
-        shuffleGrouping("test-bolt");
-
-    topologyBuilder.setBolt("test-bolt3", new TestBolt(), 2).
-        shuffleGrouping("test-spout");
-
-    Config conf = new Config();
-    conf.setTeamEmail("streaming-compute@twitter.com");
-    conf.setTeamName("stream-computing");
-    conf.setTopologyProjectName("heron-integration-test");
-    conf.setNumStmgrs(1);
-    conf.setMaxSpoutPending(100);
-    conf.setEnableAcking(false);
+    topologyBuilder.setBolt("test-bolt", new TestBolt(), 3).
+        customGrouping("test-spout", new DirectMappingGrouping());
 
     TopologyAPI.Topology fTopology =
         topologyBuilder.createTopology().
@@ -91,38 +74,112 @@ public class GraphPartitioningPackingTest {
             setState(TopologyAPI.TopologyState.RUNNING).
             getTopology();
 
+    return fTopology;
+  }
 
-    System.out.println("OS + " + fTopology.getSpouts(0).getOutputsList());
 
-    System.out.println("IS + " + fTopology.getBolts(0).getOutputsList());
-    System.out.println("IS 1+ " + fTopology.getBolts(1).getOutputsList());
+  protected TopologyAPI.Topology getTopology2(Config conf) {
+    TopologyBuilder topologyBuilder = new TopologyBuilder();
+    topologyBuilder.setSpout("test-spout", new TestSpout(), 3);
 
-    System.out.println("OS + " + fTopology.getBolts(0).getInputsList());
-    System.out.println("OS 1+ " + fTopology.getBolts(1).getInputsList());
+    topologyBuilder.setBolt("test-bolt", new TestBolt(), 6).
+        customGrouping("test-spout", new DirectMappingGrouping());
 
-    Map<String, TopologyAPI.Bolt.Builder> bolts = new HashMap<>();
-    Map<String, TopologyAPI.Spout.Builder> spouts = new HashMap<>();
-    Map<String, HashSet<String>> prev = new HashMap<>();
+    TopologyAPI.Topology fTopology =
+        topologyBuilder.createTopology().
+            setName("topology-name").
+            setConfig(conf).
+            setState(TopologyAPI.TopologyState.RUNNING).
+            getTopology();
 
-    // We will build the structure of the topologyBlr - a graph directed from children to parents,
-    // by looking only on bolts, since spout will not have parents
-    for (TopologyAPI.Bolt.Builder bolt : fTopology.toBuilder().getBoltsBuilderList()) {
-      String name = bolt.getComp().getName();
+    return fTopology;
+  }
 
-      bolts.put(name, bolt);
-      // To get the parent's component to construct a graph of topology structure
-      for (TopologyAPI.InputStream inputStream : bolt.getInputsList()) {
-        String parent = inputStream.getStream().getComponentName();
-        System.out.println(name + " " + parent + " " + inputStream.getGtype());
-        if (prev.containsKey(name)) {
-          prev.get(name).add(parent);
-        } else {
-          HashSet<String> parents = new HashSet<String>();
-          parents.add(parent);
-          prev.put(name, parents);
-        }
-      }
-    }
+  protected TopologyAPI.Topology getTopology(Config conf) {
+    TopologyBuilder topologyBuilder = new TopologyBuilder();
+    topologyBuilder.setSpout("test-spout", new TestSpout(), 3);
+
+    topologyBuilder.setBolt("test-bolt", new TestBolt(), 3).
+        shuffleGrouping("test-spout");
+
+    topologyBuilder.setBolt("test-bolt2", new TestBolt(), 2).
+        shuffleGrouping("test-bolt");
+
+    topologyBuilder.setBolt("test-bolt3", new TestBolt(), 2).
+        shuffleGrouping("test-spout");
+
+    TopologyAPI.Topology fTopology =
+        topologyBuilder.createTopology().
+            setName("topology-name").
+            setConfig(conf).
+            setState(TopologyAPI.TopologyState.RUNNING).
+            getTopology();
+
+    return fTopology;
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void testCheckFailure() throws Exception {
+    // Set up the topology and its config
+    com.twitter.heron.api.Config topologyConfig = new com.twitter.heron.api.Config();
+    // Explicit set insufficient ram for container
+    long containerRam = -1L * Constants.GB;
+
+    topologyConfig.setContainerMaxRamHint(containerRam);
+
+    TopologyAPI.Topology topology =
+        getTopology(topologyConfig);
+    PackingPlan packingPlan =
+        getGraphPartitioningPackingPlan(topology);
+  }
+
+  /**
+   * Test the scenario where the max container size is the default
+   */
+  @Test
+  public void testDefaultResources() throws Exception {
+    // Set up the topology and its config
+    com.twitter.heron.api.Config topologyConfig = new com.twitter.heron.api.Config();
+
+    // No explicit resources required
+    TopologyAPI.Topology topologyNoExplicitResourcesConfig =
+        getTopology(topologyConfig);
+
+    PackingPlan packingPlan =
+        getGraphPartitioningPackingPlan(topologyNoExplicitResourcesConfig);
+
+    Assert.assertEquals(packingPlan.getContainers().size(), 3);
+  }
+
+  /**
+   * Test the scenario where the max container size is the default and padding is configured
+   */
+  @Test
+  public void testDefaultContainerSizeWithPadding() throws Exception {
+
+    int padding = 50;
+    // Set up the topology and its config
+    com.twitter.heron.api.Config topologyConfig = new com.twitter.heron.api.Config();
+    topologyConfig.setContainerPaddingPercentage(padding);
+    TopologyAPI.Topology topology =
+        getTopology(topologyConfig);
+
+    PackingPlan packingPlan =
+        getGraphPartitioningPackingPlan(topology);
+
+    Assert.assertEquals(packingPlan.getContainers().size(), 3);
+  }
+
+  /**
+   * Test the scenario container level resource config are set
+   */
+  @Test
+  public void test() {
+
+
+    com.twitter.heron.api.Config topologyConfig = new com.twitter.heron.api.Config();
+    TopologyAPI.Topology fTopology = getTopology3(topologyConfig);
+
     PackingPlan packingPlan =
         getGraphPartitioningPackingPlan(fTopology);
 

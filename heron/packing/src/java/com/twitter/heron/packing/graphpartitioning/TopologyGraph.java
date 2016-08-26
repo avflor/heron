@@ -178,9 +178,9 @@ public class TopologyGraph {
     }
   }
 
-  public void createMetisfile() {
+  public void createMetisfile(String path) {
     try {
-      FileWriter outFile = new FileWriter(name);
+      FileWriter outFile = new FileWriter(path + "/" + name, false);
       PrintWriter out = new PrintWriter(outFile);
       //first line
       out.println(numVertices + " " + numEdges + " " + "011" + " " + noVWeights);
