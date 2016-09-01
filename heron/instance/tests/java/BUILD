@@ -18,6 +18,7 @@ java_library(
 java_tests(
     test_classes = [
         "com.twitter.heron.grouping.CustomGroupingTest",
+        "com.twitter.heron.grouping.DirectMappingGroupingTest",
         "com.twitter.heron.instance.bolt.BoltInstanceTest",
         "com.twitter.heron.instance.spout.ActivateDeactivateTest",
         "com.twitter.heron.instance.spout.SpoutInstanceTest",
