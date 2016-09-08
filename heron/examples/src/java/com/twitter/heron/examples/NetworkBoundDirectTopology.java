@@ -37,8 +37,10 @@ public final class NetworkBoundDirectTopology {
   public static void main(String[] args) throws Exception {
     TopologyBuilder builder = new TopologyBuilder();
 
-    builder.setSpout("word", new NetworkBoundDirectTopology.NetworkSpout(), 640);
-    builder.setBolt("exclaim1", new NetworkBoundDirectTopology.NetworkBolt(), 640).
+    int noSpouts = 1; //Integer.parseInt(args[1]);
+    int noBolts = 1; //Integer.parseInt(args[2]);
+    builder.setSpout("word", new NetworkBoundDirectTopology.NetworkSpout(), noSpouts);
+    builder.setBolt("exclaim1", new NetworkBoundDirectTopology.NetworkBolt(), noBolts).
         customGrouping("word", new DirectMappingGrouping());
 
     Config conf = new Config();
@@ -51,7 +53,7 @@ public final class NetworkBoundDirectTopology {
     //conf.setContainerCpuRequested(1);
 
     if (args != null && args.length > 0) {
-      conf.setNumStmgrs(320);
+      conf.setNumStmgrs(1); //(noBolts + noSpouts) / 4);
       HeronSubmitter.submitTopology(args[0], conf, builder.createTopology());
     }
   }

@@ -25,8 +25,11 @@ import com.twitter.heron.api.spout.SpoutOutputCollector;
 import com.twitter.heron.api.topology.OutputFieldsDeclarer;
 import com.twitter.heron.api.topology.TopologyBuilder;
 import com.twitter.heron.api.topology.TopologyContext;
+import com.twitter.heron.api.tuple.Fields;
 import com.twitter.heron.api.tuple.Tuple;
 import com.twitter.heron.api.tuple.Values;
+
+import backtype.storm.metric.api.GlobalMetrics;
 
 public final class NetworkBoundTopology {
 
@@ -36,8 +39,10 @@ public final class NetworkBoundTopology {
   public static void main(String[] args) throws Exception {
     TopologyBuilder builder = new TopologyBuilder();
 
-    builder.setSpout("word", new NetworkBoundTopology.NetworkSpout(), 640);
-    builder.setBolt("exclaim1", new NetworkBoundTopology.NetworkBolt(), 640).
+    int noSpouts = Integer.parseInt(args[1]);
+    int noBolts = Integer.parseInt(args[2]);
+    builder.setSpout("word", new NetworkBoundTopology.NetworkSpout(), noSpouts);
+    builder.setBolt("exclaim1", new NetworkBoundTopology.NetworkBolt(), noBolts).
         shuffleGrouping("word");
 
     Config conf = new Config();
@@ -50,7 +55,11 @@ public final class NetworkBoundTopology {
     //conf.setContainerCpuRequested(1);
 
     if (args != null && args.length > 0) {
-      conf.setNumStmgrs(320);
+      if ((noSpouts + noBolts) / 4 < 1) {
+        conf.setNumStmgrs(1);
+      } else {
+        conf.setNumStmgrs((noSpouts + noBolts) / 4);
+      }
       HeronSubmitter.submitTopology(args[0], conf, builder.createTopology());
     }
   }
@@ -73,17 +82,19 @@ public final class NetworkBoundTopology {
 
     @Override
     public void execute(Tuple tuple) {
-      if (++nItems % 100000 == 0) {
+      if (++nItems % 100 == 0) {
         long latency = System.currentTimeMillis() - startTime;
         System.out.println(tuple.getString(0).length() + "!!!");
         System.out.println("Bolt processed " + nItems + " tuples in " + latency + " ms");
+        GlobalMetrics.incr("selected_items");
+
       }
     }
 
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-      // declarer.declare(new Fields("word"));
+      declarer.declare(new Fields("word"));
     }
   }
 
@@ -99,7 +110,7 @@ public final class NetworkBoundTopology {
         SpoutOutputCollector acollector) {
       collector = acollector;
       StringBuffer randStr = new StringBuffer();
-      for (int i = 0; i < 4096; i++) {
+      for (int i = 0; i < 1024; i++) {
         randStr.append('a');
       }
       tuple = new Values(randStr.toString());
@@ -121,7 +132,7 @@ public final class NetworkBoundTopology {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-      //declarer.declare(new Fields("word"));
+      declarer.declare(new Fields("word"));
     }
   }
 }
