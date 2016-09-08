@@ -31,7 +31,6 @@ binpacking_deps_files = \
         "//heron/spi/src/java:utils-spi-java",
     ]
 
-<<<<<<< HEAD
 java_library(
     name = "packing-utils",
     srcs = glob(
