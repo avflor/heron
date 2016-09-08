@@ -60,15 +60,15 @@ public class Resource {
     return disk;
   }
 
-  public void setDisk(long disk) {
-    this.disk = disk;
+  public Resource cloneWithRam(long newRam) {
+    return new Resource(this.getCpu(), newRam, this.getDisk());
   }
 
   @Override
   public int hashCode() {
-    return (Long.hashCode(getRam()) << 2)
-         & (Long.hashCode(getDisk()) << 1)
-         & (Double.hashCode(getCpu()));
+    return (Long.valueOf(getRam()).hashCode() << 2)
+         & (Long.valueOf(getDisk()).hashCode() << 1)
+         & (Double.valueOf(getCpu()).hashCode());
   }
 
   @Override
