@@ -25,6 +25,7 @@ import com.twitter.heron.api.spout.SpoutOutputCollector;
 import com.twitter.heron.api.topology.OutputFieldsDeclarer;
 import com.twitter.heron.api.topology.TopologyBuilder;
 import com.twitter.heron.api.topology.TopologyContext;
+import com.twitter.heron.api.tuple.Fields;
 import com.twitter.heron.api.tuple.Tuple;
 import com.twitter.heron.api.tuple.Values;
 import com.twitter.heron.grouping.DirectMappingGrouping;
@@ -37,10 +38,10 @@ public final class NetworkBoundDirectTopology {
   public static void main(String[] args) throws Exception {
     TopologyBuilder builder = new TopologyBuilder();
 
-    int noSpouts = 1; //Integer.parseInt(args[1]);
-    int noBolts = 1; //Integer.parseInt(args[2]);
-    builder.setSpout("word", new NetworkBoundDirectTopology.NetworkSpout(), noSpouts);
-    builder.setBolt("exclaim1", new NetworkBoundDirectTopology.NetworkBolt(), noBolts).
+    int noSpouts = Integer.parseInt(args[1]);
+    int noBolts = Integer.parseInt(args[2]);
+    builder.setSpout("word", new NetworkBoundTopology.NetworkSpout(), noSpouts);
+    builder.setBolt("exclaim1", new NetworkBoundTopology.NetworkBolt(), noBolts).
         customGrouping("word", new DirectMappingGrouping());
 
     Config conf = new Config();
@@ -53,7 +54,11 @@ public final class NetworkBoundDirectTopology {
     //conf.setContainerCpuRequested(1);
 
     if (args != null && args.length > 0) {
-      conf.setNumStmgrs(1); //(noBolts + noSpouts) / 4);
+      if ((noSpouts + noBolts) / 4 < 1) {
+        conf.setNumStmgrs(1);
+      } else {
+        conf.setNumStmgrs((noSpouts + noBolts) / 4);
+      }
       HeronSubmitter.submitTopology(args[0], conf, builder.createTopology());
     }
   }
@@ -86,7 +91,7 @@ public final class NetworkBoundDirectTopology {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-      // declarer.declare(new Fields("word"));
+      declarer.declare(new Fields("word"));
     }
   }
 
@@ -124,7 +129,7 @@ public final class NetworkBoundDirectTopology {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-      //declarer.declare(new Fields("word"));
+      declarer.declare(new Fields("word"));
     }
   }
 }
