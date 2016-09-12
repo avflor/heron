@@ -90,6 +90,8 @@ public final class NetworkBoundTopology {
         System.out.println("Bolt processed " + nItems + " tuples in " + latency + " ms");
         GlobalMetrics.incr("selected_items");
         collector.ack(tuple);
+      } else {
+        collector.ack(tuple);
       }
     }
 
