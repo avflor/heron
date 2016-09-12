@@ -78,10 +78,10 @@ public final class NetworkBoundDirectTopology {
     public void prepare(
         Map conf,
         TopologyContext context,
-        OutputCollector collector) {
+        OutputCollector col) {
       nItems = 0;
       startTime = System.currentTimeMillis();
-      this.collector = collector;
+      this.collector = col;
     }
 
     @Override
