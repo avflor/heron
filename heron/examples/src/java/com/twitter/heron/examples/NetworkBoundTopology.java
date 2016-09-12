@@ -71,7 +71,7 @@ public final class NetworkBoundTopology {
     private long nItems;
     private long startTime;
     private OutputCollector collector;
-    
+
     @Override
     @SuppressWarnings("rawtypes")
     public void prepare(
