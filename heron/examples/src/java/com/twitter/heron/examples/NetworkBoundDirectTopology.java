@@ -30,6 +30,8 @@ import com.twitter.heron.api.tuple.Tuple;
 import com.twitter.heron.api.tuple.Values;
 import com.twitter.heron.grouping.DirectMappingGrouping;
 
+import backtype.storm.metric.api.GlobalMetrics;
+
 public final class NetworkBoundDirectTopology {
 
   private NetworkBoundDirectTopology() {
@@ -48,6 +50,7 @@ public final class NetworkBoundDirectTopology {
     conf.setDebug(true);
     conf.setMaxSpoutPending(10);
     conf.put(Config.TOPOLOGY_WORKER_CHILDOPTS, "-XX:+HeapDumpOnOutOfMemoryError");
+    conf.setEnableAcking(true);
     //conf.setComponentRam("word", 512L * 1024 * 1024);
     //conf.setComponentRam("exclaim1", 512L * 1024 * 1024);
     //conf.setContainerDiskRequested(1024L * 1024 * 1024);
@@ -68,6 +71,7 @@ public final class NetworkBoundDirectTopology {
     private static final long serialVersionUID = 1184860508880121352L;
     private long nItems;
     private long startTime;
+    private OutputCollector collector;
 
     @Override
     @SuppressWarnings("rawtypes")
@@ -77,17 +81,20 @@ public final class NetworkBoundDirectTopology {
         OutputCollector collector) {
       nItems = 0;
       startTime = System.currentTimeMillis();
+      this.collector = collector;
     }
 
     @Override
     public void execute(Tuple tuple) {
       if (++nItems % 100000 == 0) {
         long latency = System.currentTimeMillis() - startTime;
-        System.out.println(tuple.getString(0).length() + "!!!");
         System.out.println("Bolt processed " + nItems + " tuples in " + latency + " ms");
+        GlobalMetrics.incr("selected_items");
+        collector.ack(tuple);
+      } else {
+        collector.ack(tuple);
       }
     }
-
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
@@ -118,7 +125,7 @@ public final class NetworkBoundDirectTopology {
 
     public void nextTuple() {
       for (int i = 0; i < 10000; i++) {
-        collector.emit(tuple);
+        collector.emit(tuple, "MESSAGE_ID");
       }
     }
 

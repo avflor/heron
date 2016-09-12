@@ -49,6 +49,7 @@ public final class NetworkBoundTopology {
     conf.setDebug(true);
     conf.setMaxSpoutPending(10);
     conf.put(Config.TOPOLOGY_WORKER_CHILDOPTS, "-XX:+HeapDumpOnOutOfMemoryError");
+    conf.setEnableAcking(true);
     //conf.setComponentRam("word", 512L * 1024 * 1024);
     //conf.setComponentRam("exclaim1", 512L * 1024 * 1024);
     //conf.setContainerDiskRequested(1024L * 1024 * 1024);
@@ -69,7 +70,8 @@ public final class NetworkBoundTopology {
     private static final long serialVersionUID = 1184860508880121352L;
     private long nItems;
     private long startTime;
-
+    private OutputCollector collector;
+    
     @Override
     @SuppressWarnings("rawtypes")
     public void prepare(
@@ -78,19 +80,18 @@ public final class NetworkBoundTopology {
         OutputCollector collector) {
       nItems = 0;
       startTime = System.currentTimeMillis();
+      this.collector = collector;
     }
 
     @Override
     public void execute(Tuple tuple) {
       if (++nItems % 100 == 0) {
         long latency = System.currentTimeMillis() - startTime;
-        System.out.println(tuple.getString(0).length() + "!!!");
         System.out.println("Bolt processed " + nItems + " tuples in " + latency + " ms");
         GlobalMetrics.incr("selected_items");
-
+        collector.ack(tuple);
       }
     }
-
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
@@ -121,7 +122,7 @@ public final class NetworkBoundTopology {
 
     public void nextTuple() {
       for (int i = 0; i < 10000; i++) {
-        collector.emit(tuple);
+        collector.emit(tuple, "MESSAGE_ID");
       }
     }
 
