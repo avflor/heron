@@ -93,6 +93,10 @@ public class Keys {
     return ConfigKeys.get("PACKING_CLASS");
   }
 
+  public static String metisPath() {
+    return ConfigKeys.get("METIS_PATH");
+  }
+
   public static String stateManagerClass() {
     return ConfigKeys.get("STATE_MANAGER_CLASS");
   }

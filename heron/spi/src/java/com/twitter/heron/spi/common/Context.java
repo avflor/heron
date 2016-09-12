@@ -87,6 +87,10 @@ public class Context {
     return cfg.getStringValue(ConfigKeys.get("REPACKING_CLASS"));
   }
 
+  public static String metisLibraryPath(Config cfg) {
+    return cfg.getStringValue(ConfigKeys.get("METIS_PATH"));
+  }
+
   public static String stateManagerClass(Config cfg) {
     return cfg.getStringValue(ConfigKeys.get("STATE_MANAGER_CLASS"));
   }

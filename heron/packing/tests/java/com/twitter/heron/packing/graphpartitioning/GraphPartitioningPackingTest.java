@@ -35,12 +35,13 @@ public class GraphPartitioningPackingTest {
   private long instanceRamDefault;
   private double instanceCpuDefault;
   private long instanceDiskDefault;
+  private String metisPath;
 
   protected PackingPlan getGraphPartitioningPackingPlan(TopologyAPI.Topology topology) {
     com.twitter.heron.spi.common.Config config = com.twitter.heron.spi.common.Config.newBuilder()
         .put(Keys.topologyId(), topology.getId())
         .put(Keys.topologyName(), topology.getName())
-        //   .put("heron.scheduler.local.working.directory", "/home/avrilia/")
+        .put(Keys.metisPath(), "/home/avrilia/graphs/metis/bin/./gpmetis")
         .putAll(ClusterDefaults.getDefaults())
         .build();
 

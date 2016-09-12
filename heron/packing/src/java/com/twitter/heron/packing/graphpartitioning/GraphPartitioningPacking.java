@@ -54,6 +54,7 @@ public class GraphPartitioningPacking implements IPacking {
   protected int noContainers = 0;
   protected String path;
   protected PackingPlan ffdplan;
+  private String metisPath;
 
   protected HashMap<String, ArrayList<Integer>> componentVertices;
 
@@ -76,6 +77,8 @@ public class GraphPartitioningPacking implements IPacking {
     this.instanceRamDefault = Context.instanceRam(config);
     this.instanceCpuDefault = Context.instanceCpu(config).doubleValue();
     this.instanceDiskDefault = Context.instanceDisk(config);
+    this.metisPath = Context.metisLibraryPath(config);
+
     this.componentVertices = new HashMap<String, ArrayList<Integer>>();
 
     List<TopologyAPI.Config.KeyValue> topologyConfig = topology.getTopologyConfig().getKvsList();
@@ -99,8 +102,6 @@ public class GraphPartitioningPacking implements IPacking {
     this.noContainers = ffdplan.getContainers().size();
 
     this.path = System.getProperty("java.io.tmpdir");
-    System.out.println("OOO " + path);
-
   }
 
   @Override
@@ -244,7 +245,7 @@ public class GraphPartitioningPacking implements IPacking {
       for (int i = 0; i < parent.size(); i++) {
         for (int j = 0; j < child.size(); j++) {
           tGraph.addEdge(new Edge(parent.get(i), child.get(j), 1));
-          LOG.info("Edge: " + " " + parent.get(i) + " " + child.get(j));
+          //LOG.info("Edge: " + " " + parent.get(i) + " " + child.get(j));
         }
       }
     } else { //custom grouping
@@ -254,7 +255,7 @@ public class GraphPartitioningPacking implements IPacking {
         for (int i = 0; i < parent.size(); i++) {
           int dest = i / (int) ratio;
           tGraph.addEdge(new Edge(parent.get(i), child.get(dest), 1));
-          LOG.info("Edge: " + " " + parent.get(i) + " " + child.get(dest));
+          //LOG.info("Edge: " + " " + parent.get(i) + " " + child.get(dest));
         }
       } else {
         //every source to 1/ratio destinations
@@ -263,8 +264,8 @@ public class GraphPartitioningPacking implements IPacking {
           int dest = i * numDest;
           for (int j = dest; j <= dest + numDest - 1; j++) {
             tGraph.addEdge(new Edge(parent.get(i), child.get(j), 1));
-            LOG.info("Edge: " + " "
-                + parent.get(i) + " " + child.get(j) + " " + numDest);
+            //LOG.info("Edge: " + " "
+                //+ parent.get(i) + " " + child.get(j) + " " + numDest);
           }
         }
       }
@@ -404,9 +405,10 @@ public class GraphPartitioningPacking implements IPacking {
     tGraph.createMetisfile(path);
     String cmd = null;
 
-    cmd = "/home/avrilia/graphs/metis/bin/./gpmetis  "
-        + path + "/" + tGraph.getName() + " " + noContainers;
-    System.out.println("LLL " + cmd);
+    //cmd = "/home/avrilia/graphs/metis/bin/./gpmetis  "
+     //   + path + "/" + tGraph.getName() + " " + noContainers;
+    cmd = metisPath + " " + path + "/" + tGraph.getName() + " " + noContainers;
+    System.out.println("CMD: " + cmd);
     try {
       final Process p = Runtime.getRuntime().exec(cmd);
       p.waitFor();

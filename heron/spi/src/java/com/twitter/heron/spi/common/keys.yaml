@@ -49,6 +49,7 @@ LAUNCHER_CLASS:                      heron.class.launcher
 SCHEDULER_CLASS:                     heron.class.scheduler
 PACKING_CLASS:                       heron.class.packing.algorithm
 REPACKING_CLASS:                     heron.class.repacking.algorithm
+METIS_PATH:                          heron.class.metis.path
 STATE_MANAGER_CLASS:                 heron.class.state.manager
 
 ################################################################################
