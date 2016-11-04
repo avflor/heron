@@ -81,6 +81,11 @@ maven_jar(
   artifact = "org.apache.avro:avro:1.7.4",
 )
 
+maven_jar(
+  name = "org_glassfish_hk2_external_javax_inject",
+  artifact = "org.glassfish.hk2.external:javax.inject:2.5.0-b05",
+)
+
 maven_server(
   name = "maven_twttr_com",
   url = "http://maven.twttr.com",

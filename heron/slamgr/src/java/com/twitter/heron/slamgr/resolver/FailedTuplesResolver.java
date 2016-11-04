@@ -23,6 +23,7 @@ import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.slamgr.IResolver;
 
 public class FailedTuplesResolver implements IResolver<FailedTuplesResult> {
+
   @Override
   public void initialize(Config config) {
 

@@ -38,7 +38,7 @@ public final class ExclamationTopology {
 
   public static void main(String[] args) throws Exception {
     TopologyBuilder builder = new TopologyBuilder();
-    int parallelism = 2;
+    int parallelism = 1;
 
     builder.setSpout("word", new TestWordSpout(), parallelism);
     builder.setBolt("exclaim1", new ExclamationBolt(), 2 * parallelism)
@@ -51,7 +51,7 @@ public final class ExclamationTopology {
     conf.setComponentRam("word", 3L * 1024 * 1024 * 1024);
     conf.setComponentRam("exclaim1", 3L * 1024 * 1024 * 1024);
     conf.setContainerDiskRequested(5L * 1024 * 1024 * 1024);
-    conf.setContainerCpuRequested(5);
+    conf.setContainerCpuRequested(3);
 
     if (args != null && args.length > 0) {
       conf.setNumStmgrs(parallelism);

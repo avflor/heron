@@ -28,6 +28,7 @@ public class FailedTuplesPolicy implements SLAPolicy {
 
   private FailedTuplesDetector detector = new FailedTuplesDetector();
   private FailedTuplesResolver resolver = new FailedTuplesResolver();
+
   private TopologyAPI.Topology topology;
 
   @Override
@@ -41,6 +42,7 @@ public class FailedTuplesPolicy implements SLAPolicy {
   @Override
   public void execute() {
     Diagnosis<FailedTuplesResult> diagnosis = detector.detect(topology);
+
     if (diagnosis != null) {
       resolver.resolve(diagnosis, topology);
     }

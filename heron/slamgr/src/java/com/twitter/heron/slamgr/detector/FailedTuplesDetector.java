@@ -28,6 +28,7 @@ import com.twitter.heron.spi.slamgr.IDetector;
  * Detects the instances that have failed tuples.
  */
 public class FailedTuplesDetector implements IDetector<FailedTuplesResult> {
+
   private SinkVisitor visitor;
 
   @Override

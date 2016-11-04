@@ -30,7 +30,12 @@ slamgr_deps_files = [
            "@com_fasterxml_jackson_jaxrs_jackson_jaxrs_json_provider//jar",
            "@com_fasterxml_jackson_jaxrs_jackson_jaxrs_base//jar",
            "@org_glassfish_jersey_ext_jersey_entity_filtering//jar",
-           "@com_fasterxml_jackson_module_jackson_module_jaxb_annotations//jar"
+           "@com_fasterxml_jackson_module_jackson_module_jaxb_annotations//jar",
+           "//heron/spi/src/java:utils-spi-java",
+           "@commons_cli_commons_cli//jar",
+           "//heron/spi/src/java:statemgr-spi-java",
+           "@org_glassfish_hk2_external_javax_inject//jar",
+
 ]
 
 java_library(
