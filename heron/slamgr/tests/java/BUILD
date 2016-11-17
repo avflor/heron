@@ -1,5 +1,7 @@
 
+load("/tools/rules/java_tests", "java_tests")
 load("/tools/rules/heron_deps", "heron_java_proto_files")
+
 
 slamgr_deps_files = [
     "//heron/spi/src/java:common-spi-java",
@@ -22,52 +24,45 @@ slamgr_deps_files = [
               "@org_glassfish_jersey_media_jersey_media_json_jackson//jar",
               "//heron/proto:proto_topology_java",
               "//heron/slamgr/src/java:slamgr-java",
+              "//heron/spi/src/java:packing-spi-java",
+              "//heron/proto:proto_packing_plan_java",
+              "//heron/spi/src/java:statemgr-spi-java",
+              "//heron/instance/src/java:instance-java",
+
 ]
 
 test_deps_files = [
     "//third_party/java:junit4",
     "//heron/spi/src/java:utils-spi-java",
+     "@com_google_guava_guava//jar",
+     "//third_party/java:powermock",
+     "//third_party/java:mockito",
   ]
 
 
 java_library(
-    name = "slamgr-utils",
-    srcs = glob(
-        ["**/*.java"]
-    ),
+    name = "slamgr-tests",
+    srcs = glob(["**/*.java"]),
     deps = slamgr_deps_files +\
-           test_deps_files,
-)
-
-java_test(
-    name = "FailedTuplesDetectorTest",
-    srcs = glob(
-        ["**/detector/FailedTuplesDetectorTest.java"]
-    ),
-    deps = slamgr_deps_files + \
-           test_deps_files,
-    size = "small",
-)
-
-java_test(
-    name = "FailedTuplesResolverTest",
-    srcs = glob(
-        ["**/resolver/FailedTuplesResolverTest.java"]
-    ),
-    deps = slamgr_deps_files + \
-           test_deps_files,
-    size = "small",
-)
-
-java_test(
-    name = "FailedTuplesPolicyTest",
-    srcs = glob(
-        ["**/policy/FailedTuplesPolicyTest.java"]
-    ),
-    deps = slamgr_deps_files + \
-           test_deps_files,
-    size = "small",
+           test_deps_files
+           + [
+               "//heron/statemgrs/src/java:null-statemgr-java",
+               "//heron/schedulers/src/java:null-scheduler-java",
+               "//heron/packing/src/java:roundrobin-packing",
+             ]
 )
 
 
+
+java_tests(
+   test_classes = [
+       "com.twitter.heron.slamgr.detector.BackPressureDetectorTest",
+       "com.twitter.heron.slamgr.resolver.BackPressureResolverTest",
+       "com.twitter.heron.slamgr.resolver.FailedTuplesResolverTest",
+       "com.twitter.heron.slamgr.detector.FailedTuplesDetectorTest",
+       "com.twitter.heron.slamgr.policy.FailedTuplesPolicyTest",
+     ],
+     runtime_deps = [ ":slamgr-tests" ],
+     size = "small",
+)
 

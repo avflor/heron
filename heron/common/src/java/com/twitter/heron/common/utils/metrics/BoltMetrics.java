@@ -39,6 +39,7 @@ public class BoltMetrics {
   private final CountMetric failCount;
   private final CountMetric executeCount;
   private final ReducedMetric<MeanReducerState, Number, Double> executeLatency;
+  private final ReducedMetric<MeanReducerState, Number, Double> tupleSize;
 
   // Time in nano-seconds spending in execute() at every interval
   private final CountMetric emitCount;
@@ -57,6 +58,7 @@ public class BoltMetrics {
     executeLatency = new ReducedMetric<>(new MeanReducer());
     emitCount = new CountMetric();
     outQueueFullCount = new CountMetric();
+    tupleSize = new ReducedMetric<>(new MeanReducer());
   }
 
   public void registerMetrics(TopologyContextImpl topologyContext) {
@@ -73,6 +75,8 @@ public class BoltMetrics {
     topologyContext.registerMetric("__execute-latency/default", executeLatency, interval);
     topologyContext.registerMetric("__emit-count/default", emitCount, interval);
     topologyContext.registerMetric("__out-queue-full-count", outQueueFullCount, interval);
+    topologyContext.registerMetric("__tuple-size", tupleSize, interval);
+
   }
 
   // For MultiCountMetrics, we need to set the default value for all streams.
@@ -95,9 +99,11 @@ public class BoltMetrics {
     failLatency.update(latency);
   }
 
-  public void executeTuple(String streamId, String sourceComponent, long latency) {
+  public void executeTuple(String streamId, String sourceComponent, long latency,
+                           double tupleLength) {
     executeCount.incr();
     executeLatency.update(latency);
+    tupleSize.update(tupleLength);
   }
 
   public void emittedTuple(String streamId) {

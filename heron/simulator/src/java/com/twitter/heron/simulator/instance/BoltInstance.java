@@ -166,8 +166,11 @@ public class BoltInstance implements IInstance {
     long startTime = System.nanoTime();
 
     List<Object> values = new ArrayList<>();
+    double tupleSize = 0;
     for (ByteString b : dataTuple.getValuesList()) {
+      byte[] data = b.toByteArray();
       values.add(serializer.deserialize(b.toByteArray()));
+      tupleSize += data.length;
     }
 
     // Decode the tuple
@@ -188,7 +191,7 @@ public class BoltInstance implements IInstance {
         deserializedTime - startTime);
 
     // Update metrics
-    boltMetrics.executeTuple(stream.getId(), stream.getComponentName(), executeLatency);
+    boltMetrics.executeTuple(stream.getId(), stream.getComponentName(), executeLatency, tupleSize);
   }
 
   @Override
@@ -262,7 +265,7 @@ public class BoltInstance implements IInstance {
     long startTime = System.nanoTime();
     bolt.execute(t);
     long latency = System.nanoTime() - startTime;
-    boltMetrics.executeTuple(t.getSourceStreamId(), t.getSourceComponent(), latency);
+    boltMetrics.executeTuple(t.getSourceStreamId(), t.getSourceComponent(), latency, 0);
 
     collector.sendOutTuples();
     // reschedule ourselves again

@@ -35,7 +35,8 @@ slamgr_deps_files = [
            "@commons_cli_commons_cli//jar",
            "//heron/spi/src/java:statemgr-spi-java",
            "@org_glassfish_hk2_external_javax_inject//jar",
-
+           "//heron/proto:proto_packing_plan_java",
+           "//heron/spi/src/java:packing-spi-java",
 ]
 
 java_library(

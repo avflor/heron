@@ -14,6 +14,7 @@
 
 package com.twitter.heron.examples;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 
@@ -44,7 +45,10 @@ public class TestWordSpout extends BaseRichSpout {
   }
 
   public void nextTuple() {
-    final String word = words[rand.nextInt(words.length)];
+    //final String word = words[rand.nextInt(words.length)];
+    char[] bytes = new char[10];
+    Arrays.fill(bytes, ' ');
+    String word = new String(bytes);
     collector.emit(new Values(word));
   }
 

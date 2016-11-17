@@ -185,8 +185,11 @@ public class BoltInstance implements IInstance {
       for (HeronTuples.HeronDataTuple dataTuple : tuples.getData().getTuplesList()) {
         // Create the value list and fill the value
         List<Object> values = new ArrayList<>(nValues);
+        double tupleSize = 0;
         for (int i = 0; i < nValues; i++) {
+          byte[] data = dataTuple.getValues(i).toByteArray();
           values.add(serializer.deserialize(dataTuple.getValues(i).toByteArray()));
+          tupleSize += data.length;
         }
 
         // Decode the tuple
@@ -206,7 +209,8 @@ public class BoltInstance implements IInstance {
         topologyContext.invokeHookBoltExecute(t, executeLatency);
 
         // Update metrics
-        boltMetrics.executeTuple(stream.getId(), stream.getComponentName(), executeLatency);
+        boltMetrics.executeTuple(stream.getId(), stream.getComponentName(), executeLatency,
+            tupleSize);
       }
 
       // To avoid spending too much time
@@ -248,7 +252,7 @@ public class BoltInstance implements IInstance {
     long startTime = System.nanoTime();
     bolt.execute(t);
     long latency = System.nanoTime() - startTime;
-    boltMetrics.executeTuple(t.getSourceStreamId(), t.getSourceComponent(), latency);
+    boltMetrics.executeTuple(t.getSourceStreamId(), t.getSourceComponent(), latency, 0);
 
     collector.sendOutTuples();
     // reschedule ourselves again
