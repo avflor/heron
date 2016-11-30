@@ -13,20 +13,23 @@
 // limitations under the License.
 package com.twitter.heron.spi.slamgr;
 
+
 import java.util.Set;
 
-/**
- * Describes a set of problems detected by a detector
- */
-public class Diagnosis<T extends Bottleneck> {
+import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
 
-  private Set<T> summary;
+public class InstanceBottleneck extends Bottleneck {
+  InstanceInfo instanceData;
 
-  public Diagnosis(Set<T> summary) {
-    this.summary = summary;
+  public InstanceBottleneck(int containerId, int instanceId, Set<MetricsInfo> metrics) {
+    this.instanceData = new InstanceInfo(containerId, instanceId, metrics);
   }
 
-  public Set<T> getSummary() {
-    return summary;
+  public InstanceInfo getInstanceData() {
+    return instanceData;
+  }
+
+  public String toString() {
+    return instanceData.toString();
   }
 }

@@ -14,15 +14,17 @@
 
 package com.twitter.heron.slamgr.resolver;
 
+import java.util.Iterator;
 import java.util.Set;
+import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.slamgr.detector.FailedTuplesResult;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.slamgr.IResolver;
+import com.twitter.heron.spi.slamgr.InstanceBottleneck;
 
-public class FailedTuplesResolver implements IResolver<FailedTuplesResult> {
+public class FailedTuplesResolver implements IResolver<InstanceBottleneck>{
 
   @Override
   public void initialize(Config config) {
@@ -30,12 +32,13 @@ public class FailedTuplesResolver implements IResolver<FailedTuplesResult> {
   }
 
   @Override
-  public Boolean resolve(Diagnosis<FailedTuplesResult> diagnosis, TopologyAPI.Topology topology) {
-    Set<FailedTuplesResult> summary = diagnosis.getSummary();
-    for (FailedTuplesResult result : summary) {
-      System.out.println("Instance " + result.getInstanceId() + " in container "
-          + result.getContainerId()
-          + " has " + result.getNumFailedTuples() + " failed tuples.");
+  public Boolean resolve(Diagnosis<InstanceBottleneck> diagnosis, TopologyAPI.Topology topology) {
+    Set<InstanceBottleneck> summary = diagnosis.getSummary();
+    for (InstanceBottleneck result : summary) {
+      for(MetricsInfo metric : result.getInstanceData().getMetrics())
+      System.out.println("Instance " + result.getInstanceData().getInstanceId() + " in container "
+          + result.getInstanceData().getContainerId()
+          + " has " + metric.getValue() + " failed tuples.");
     }
     return true;
   }

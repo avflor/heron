@@ -24,11 +24,12 @@ import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
 import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
 import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.slamgr.IDetector;
+import com.twitter.heron.spi.slamgr.InstanceBottleneck;
 
 /**
  * Detects the instances that have failed tuples.
  */
-public class FailedTuplesDetector implements IDetector<FailedTuplesResult> {
+public class FailedTuplesDetector implements IDetector<InstanceBottleneck> {
 
   private SinkVisitor visitor;
 
@@ -39,20 +40,23 @@ public class FailedTuplesDetector implements IDetector<FailedTuplesResult> {
   }
 
   @Override
-  public Diagnosis<FailedTuplesResult> detect(TopologyAPI.Topology topology) {
+  public Diagnosis<InstanceBottleneck> detect(TopologyAPI.Topology topology) {
     List<TopologyAPI.Bolt> bolts = topology.getBoltsList();
     String[] boltNames = new String[bolts.size()];
-    for(int i = 0; i < boltNames.length; i++){
+    for (int i = 0; i < boltNames.length; i++) {
       boltNames[i] = bolts.get(i).getComp().getName();
     }
     Iterable<MetricsInfo> metricsResults = this.visitor.getNextMetric("__fail-count/default",
         boltNames);
-    Set<FailedTuplesResult> instanceInfo = new HashSet<FailedTuplesResult>();
+    Set<InstanceBottleneck> instanceInfo = new HashSet<InstanceBottleneck>();
     for (MetricsInfo metricsInfo : metricsResults) {
       String[] parts = metricsInfo.getName().split("_");
-      instanceInfo.add(new FailedTuplesResult(parts[1], parts[3], metricsInfo.getValue()));
+      Set<MetricsInfo> metrics = new HashSet<>();
+      metrics.add(new MetricsInfo("__fail-count/default", metricsInfo.getValue()));
+      instanceInfo.add(new InstanceBottleneck(Integer.parseInt(parts[1]),
+          Integer.parseInt(parts[3]), metrics));
     }
-    return new Diagnosis<FailedTuplesResult>(instanceInfo);
+    return new Diagnosis<InstanceBottleneck>(instanceInfo);
   }
 
   @Override

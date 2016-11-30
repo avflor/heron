@@ -22,6 +22,7 @@ import com.twitter.heron.slamgr.resolver.FailedTuplesResolver;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
 import com.twitter.heron.spi.slamgr.Diagnosis;
+import com.twitter.heron.spi.slamgr.InstanceBottleneck;
 import com.twitter.heron.spi.slamgr.SLAPolicy;
 
 public class FailedTuplesPolicy implements SLAPolicy {
@@ -41,7 +42,7 @@ public class FailedTuplesPolicy implements SLAPolicy {
 
   @Override
   public void execute() {
-    Diagnosis<FailedTuplesResult> diagnosis = detector.detect(topology);
+    Diagnosis<InstanceBottleneck> diagnosis = detector.detect(topology);
 
     if (diagnosis != null) {
       resolver.resolve(diagnosis, topology);

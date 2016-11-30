@@ -22,6 +22,7 @@ import com.twitter.heron.slamgr.detector.FailedTuplesDetector;
 import com.twitter.heron.slamgr.detector.FailedTuplesResult;
 import com.twitter.heron.slamgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.spi.slamgr.Diagnosis;
+import com.twitter.heron.spi.slamgr.InstanceBottleneck;
 import com.twitter.heron.spi.utils.TopologyTests;
 
 public class FailedTuplesResolverTest {
@@ -46,7 +47,7 @@ public class FailedTuplesResolverTest {
     FailedTuplesDetector detector = new FailedTuplesDetector();
     detector.initialize(null, visitor);
 
-    Diagnosis<FailedTuplesResult> result = detector.detect(topology);
+    Diagnosis<InstanceBottleneck> result = detector.detect(topology);
     Assert.assertEquals(2, result.getSummary().size());
 
     FailedTuplesResolver resolver = new FailedTuplesResolver();
