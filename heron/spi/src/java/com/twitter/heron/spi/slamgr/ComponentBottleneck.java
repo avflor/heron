@@ -16,7 +16,6 @@ package com.twitter.heron.spi.slamgr;
 
 import java.util.ArrayList;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
 
@@ -45,5 +44,12 @@ public class ComponentBottleneck extends Bottleneck {
     return instances;
   }
 
+  public boolean contains(String metric, String value) {
+    for (InstanceBottleneck instanceBottleneck : instances) {
+      if (instanceBottleneck.contains(metric, value))
+        return true;
+    }
+    return false;
+  }
 }
 
