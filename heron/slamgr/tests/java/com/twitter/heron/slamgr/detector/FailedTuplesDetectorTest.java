@@ -42,7 +42,7 @@ public class FailedTuplesDetectorTest {
     visitor.initialize(null, topology);
 
     FailedTuplesDetector detector = new FailedTuplesDetector();
-    detector.initialize(null, visitor);
+    detector.initialize(null, null, visitor);
 
     Diagnosis<InstanceBottleneck> result = detector.detect(topology);
     Assert.assertEquals(2, result.getSummary().size());

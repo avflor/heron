@@ -16,26 +16,25 @@ package com.twitter.heron.slamgr.resolver;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
+import com.twitter.heron.scheduler.client.ISchedulerClient;
+import com.twitter.heron.spi.common.Constants;
+import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.Mockito;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.api.topology.TopologyBuilder;
 import com.twitter.heron.packing.roundrobin.RoundRobinPacking;
 import com.twitter.heron.proto.system.PackingPlans;
 import com.twitter.heron.slamgr.detector.BackPressureDetector;
-import com.twitter.heron.slamgr.detector.BackPressureResult;
 import com.twitter.heron.slamgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.slamgr.utils.TestBolt;
 import com.twitter.heron.slamgr.utils.TestSpout;
 import com.twitter.heron.spi.common.ClusterDefaults;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.common.ConfigKeys;
 import com.twitter.heron.spi.common.Keys;
 import com.twitter.heron.spi.packing.IPacking;
 import com.twitter.heron.spi.packing.PackingPlan;
@@ -43,20 +42,12 @@ import com.twitter.heron.spi.packing.PackingPlanProtoSerializer;
 import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.statemgr.IStateManager;
-import com.twitter.heron.spi.utils.ReflectionUtils;
-import com.twitter.heron.spi.utils.TopologyUtils;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({
-    TopologyUtils.class, ReflectionUtils.class, TopologyAPI.Topology.class})
 public class ScaleUpResolverTest {
-
-  private static final String STATE_MANAGER_CLASS = "STATE_MANAGER_CLASS";
   private IStateManager stateManager;
-  private Config config;
   private TopologyAPI.Topology topology;
 
 
@@ -113,40 +104,42 @@ public class ScaleUpResolverTest {
    */
   @Before
   public void setUp() throws Exception {
-    this.topology = getTopology("DataSkewTopology");
-    config = mock(Config.class);
-    when(config.getStringValue(ConfigKeys.get("STATE_MANAGER_CLASS"))).
-        thenReturn(STATE_MANAGER_CLASS);
-
-    // Mock objects to be verified
-    stateManager = mock(IStateManager.class);
-
-    final SettableFuture<PackingPlans.PackingPlan> future = getTestPacking(this.topology);
-    when(stateManager.getPackingPlan(null, "DataSkewTopology")).thenReturn(future);
-
-    // Mock ReflectionUtils stuff
-    PowerMockito.spy(ReflectionUtils.class);
-    PowerMockito.doReturn(stateManager).
-        when(ReflectionUtils.class, "newInstance", STATE_MANAGER_CLASS);
+    this.topology = getTopology("ds");
   }
 
   @Test
   public void testResolver() {
+    Config config = Config.newBuilder()
+        .put(Keys.repackingClass(), ResourceCompliantRRPacking.class.getName())
+        .put(Keys.instanceCpu(), "1")
+        .put(Keys.instanceRam(), 192L * Constants.MB)
+        .put(Keys.instanceDisk(), 1024L * Constants.MB)
+        .build();
+
+    Config spyRuntime = Mockito.spy(Config.newBuilder().build());
+
+    ISchedulerClient schedulerClient = Mockito.mock(ISchedulerClient.class);
+    when(spyRuntime.get(Keys.schedulerClientInstance())).thenReturn(schedulerClient);
+
+    stateManager = mock(IStateManager.class);
+    SettableFuture<PackingPlans.PackingPlan> future = getTestPacking(this.topology);
+    when(stateManager.getPackingPlan(null, "ds")).thenReturn(future);
+    when(spyRuntime.get(Keys.schedulerStateManagerAdaptor()))
+        .thenReturn(new SchedulerStateManagerAdaptor(stateManager, 5000));
+
 
     TrackerVisitor visitor = new TrackerVisitor();
     visitor.initialize(config, topology);
 
     BackPressureDetector detector = new BackPressureDetector();
-    detector.initialize(config, visitor);
+    detector.initialize(config, spyRuntime, visitor);
 
     Diagnosis<ComponentBottleneck> result = detector.detect(topology);
     Assert.assertEquals(1, result.getSummary().size());
 
     ScaleUpResolver resolver = new ScaleUpResolver();
-    resolver.initialize(config,null);
+    resolver.initialize(config, spyRuntime);
 
     resolver.resolve(result, topology);
   }
-
-
 }

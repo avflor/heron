@@ -40,7 +40,7 @@ public class ProcessingSkewDetector extends ThresholdBasedDetector<ComponentBott
   }
 
   @Override
-  public boolean initialize(Config config, SinkVisitor sVisitor) {
+  public boolean initialize(Config config, Config runtime, SinkVisitor sVisitor) {
     this.visitor = sVisitor;
     return true;
   }

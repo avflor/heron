@@ -42,7 +42,7 @@ public class ProcessingSkewDetectorTest {
     visitor.initialize(null, topology);
 
     ProcessingSkewDetector detector = new ProcessingSkewDetector(50);
-    detector.initialize(null, visitor);
+    detector.initialize(null, null, visitor);
 
     Diagnosis<ComponentBottleneck> result = detector.detect(topology);
     Assert.assertEquals(1, result.getSummary().size());
