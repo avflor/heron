@@ -48,7 +48,10 @@ java_library(
            + [
                "//heron/statemgrs/src/java:null-statemgr-java",
                "//heron/schedulers/src/java:null-scheduler-java",
+               "//heron/schedulers/src/java:local-scheduler-java",
                "//heron/packing/src/java:roundrobin-packing",
+               "//heron/packing/src/java:binpacking-packing",
+               "//heron/scheduler-core/src/java:scheduler-java",
              ]
 )
 

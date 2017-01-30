@@ -17,6 +17,7 @@ package com.twitter.heron.examples;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
@@ -128,6 +129,11 @@ public final class DataSkewTopology {
     @Override
     public void execute(Tuple tuple) {
       String key = tuple.getString(0);
+      try {
+        TimeUnit.MILLISECONDS.sleep(200);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       if (countMap.get(key) == null) {
         countMap.put(key, 1);
       } else {

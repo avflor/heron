@@ -34,7 +34,7 @@ public class FailedTuplesDetector implements IDetector<InstanceBottleneck> {
   private SinkVisitor visitor;
 
   @Override
-  public boolean initialize(Config config, SinkVisitor sVisitor) {
+  public boolean initialize(Config config, Config runtime, SinkVisitor sVisitor) {
     this.visitor = sVisitor;
     return true;
   }

@@ -93,6 +93,10 @@ public class Keys {
     return ConfigKeys.get("PACKING_CLASS");
   }
 
+  public static String repackingClass() {
+    return ConfigKeys.get("REPACKING_CLASS");
+  }
+
   public static String stateManagerClass() {
     return ConfigKeys.get("STATE_MANAGER_CLASS");
   }
@@ -251,6 +255,10 @@ public class Keys {
 
   public static String schedulerStateManagerAdaptor() {
     return ConfigKeys.get("SCHEDULER_STATE_MANAGER_ADAPTOR");
+  }
+
+  public static String schedulerClientInstance() {
+    return "SCHEDULER_CLIENT_INSTANCE";
   }
 
   public static String launcherClassInstance() {

@@ -23,7 +23,7 @@ public interface IDetector<T extends Bottleneck> extends AutoCloseable {
   /**
    * Initialize the detector with the config and a sink visitor
    */
-  boolean initialize(Config config, SinkVisitor sVisitor);
+  boolean initialize(Config config, Config runtime, SinkVisitor sVisitor);
 
   /**
    * Called by detector to detect a potential problem.
