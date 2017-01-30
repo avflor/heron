@@ -51,7 +51,7 @@ public class FailedTuplesResolverTest {
     Assert.assertEquals(2, result.getSummary().size());
 
     FailedTuplesResolver resolver = new FailedTuplesResolver();
-    resolver.initialize(null);
+    resolver.initialize(null, null);
 
     resolver.resolve(result, topology);
 

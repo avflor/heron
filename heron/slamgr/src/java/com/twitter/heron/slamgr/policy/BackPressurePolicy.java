@@ -21,13 +21,11 @@ import java.util.Set;
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.slamgr.TopologyGraph;
 import com.twitter.heron.slamgr.detector.BackPressureDetector;
-import com.twitter.heron.slamgr.detector.FailedTuplesDetector;
-import com.twitter.heron.slamgr.resolver.FailedTuplesResolver;
+import com.twitter.heron.slamgr.resolver.ScaleUpResolver;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
 import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 import com.twitter.heron.spi.slamgr.Diagnosis;
-import com.twitter.heron.spi.slamgr.InstanceBottleneck;
 import com.twitter.heron.spi.slamgr.SLAPolicy;
 
 import static com.twitter.heron.spi.slamgr.utils.BottleneckUtils.appears;
@@ -35,18 +33,18 @@ import static com.twitter.heron.spi.slamgr.utils.BottleneckUtils.appears;
 public class BackPressurePolicy implements SLAPolicy {
 
   private BackPressureDetector detector = new BackPressureDetector();
-  private FailedTuplesResolver resolver = new FailedTuplesResolver();
+  private ScaleUpResolver resolver = new ScaleUpResolver();
 
   private TopologyAPI.Topology topology;
   private ArrayList<String> topologySort = null;
 
 
   @Override
-  public void initialize(Config conf, TopologyAPI.Topology t,
+  public void initialize(Config conf, Config runtime, TopologyAPI.Topology t,
                          SinkVisitor visitor) {
     this.topology = t;
     detector.initialize(conf, visitor);
-    resolver.initialize(conf);
+    resolver.initialize(conf, runtime);
   }
 
   @Override
@@ -63,15 +61,19 @@ public class BackPressurePolicy implements SLAPolicy {
       if (summary.size() != 0) {
         for (int i = 0; i < topologySort.size() && !found; i++) {
           String name = topologySort.get(i);
-          if (appears(summary,name)) {
-            System.out.println(name);
+          ComponentBottleneck current = appears(summary, name);
+          if (current != null) {
+            System.out.println("Bottleneck " + name);
+            Diagnosis<ComponentBottleneck> currentDiagnosis = new Diagnosis<>();
+            currentDiagnosis.addToDiagnosis(current);
+            resolver.resolve(currentDiagnosis, topology);
+            found = true;
             //data skew detector
             //slow host detector
             //network partitioning
           }
         }
       }
-      //resolver.resolve(diagnosis, topology);
     }
   }
 

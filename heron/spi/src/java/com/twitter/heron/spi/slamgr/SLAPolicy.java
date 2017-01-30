@@ -22,7 +22,7 @@ public interface SLAPolicy extends AutoCloseable {
   /**
    * Initialize the SLA policy
    */
-  void initialize(Config conf, TopologyAPI.Topology topology, SinkVisitor visitor);
+  void initialize(Config conf, Config runtime, TopologyAPI.Topology topology, SinkVisitor visitor);
 
   /**
    * It executes a set of detectors and resolvers. This method implements all the logic

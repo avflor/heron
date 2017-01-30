@@ -33,11 +33,11 @@ public class FailedTuplesPolicy implements SLAPolicy {
   private TopologyAPI.Topology topology;
 
   @Override
-  public void initialize(Config conf, TopologyAPI.Topology t,
+  public void initialize(Config conf, Config runtime, TopologyAPI.Topology t,
                          SinkVisitor visitor) {
     this.topology = t;
     detector.initialize(conf, visitor);
-    resolver.initialize(conf);
+    resolver.initialize(conf, runtime);
   }
 
   @Override

@@ -27,7 +27,7 @@ import com.twitter.heron.spi.slamgr.InstanceBottleneck;
 public class FailedTuplesResolver implements IResolver<InstanceBottleneck>{
 
   @Override
-  public void initialize(Config config) {
+  public void initialize(Config config, Config runtime) {
 
   }
 

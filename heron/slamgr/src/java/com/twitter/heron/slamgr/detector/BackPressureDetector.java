@@ -65,6 +65,7 @@ public class BackPressureDetector implements IDetector<ComponentBottleneck> {
     String name = "container_" + containerPlan.getId()
         + "_" + instancePlan.getComponentName()
         + "_" + instancePlan.getTaskId();
+    //System.out.println(BACKPRESSURE_METRIC +"/" + name);
     Iterable<MetricsInfo> metricsResults =
         this.visitor.getNextMetric(BACKPRESSURE_METRIC +"/" + name, "__stmgr__");
     String[] parts = metricsResults.toString().replace("]", "").replace(" ", "").split("=");
@@ -82,7 +83,6 @@ public class BackPressureDetector implements IDetector<ComponentBottleneck> {
       for (PackingPlan.InstancePlan instancePlan : containerPlan.getInstances()) {
         String metricValue = getBackPressureMetric(containerPlan, instancePlan);
         MetricsInfo metric = new MetricsInfo(BACKPRESSURE_METRIC, metricValue);
-
         ComponentBottleneck currentBottleneck;
         if(!results.containsKey(instancePlan.getComponentName())) {
            currentBottleneck = new ComponentBottleneck(instancePlan.getComponentName());
@@ -99,7 +99,8 @@ public class BackPressureDetector implements IDetector<ComponentBottleneck> {
     }
     Set<ComponentBottleneck> bottlenecks  = new HashSet<ComponentBottleneck>();
     for(ComponentBottleneck bottleneck : results.values()){
-      if(!bottleneck.contains(BACKPRESSURE_METRIC,"0")) {
+      if(bottleneck.containsNonZero(BACKPRESSURE_METRIC)) {
+        System.out.println("bottleneck name " + bottleneck.getComponentName().toString());
         bottlenecks.add(bottleneck);
       }
     }

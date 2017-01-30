@@ -57,7 +57,7 @@ java_library(
 java_tests(
    test_classes = [
        "com.twitter.heron.slamgr.detector.BackPressureDetectorTest",
-       "com.twitter.heron.slamgr.resolver.BackPressureResolverTest",
+       "com.twitter.heron.slamgr.resolver.ScaleUpResolverTest",
        "com.twitter.heron.slamgr.resolver.FailedTuplesResolverTest",
        "com.twitter.heron.slamgr.detector.FailedTuplesDetectorTest",
        "com.twitter.heron.slamgr.policy.FailedTuplesPolicyTest",

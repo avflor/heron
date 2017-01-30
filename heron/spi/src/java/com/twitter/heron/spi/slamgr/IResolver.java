@@ -21,7 +21,7 @@ public interface IResolver<T extends Bottleneck> extends AutoCloseable {
   /**
    * Initialize the resolver with the config
    */
-  void initialize(Config config);
+  void initialize(Config config, Config runtime);
 
   /**
    * Called to resolve a problem.

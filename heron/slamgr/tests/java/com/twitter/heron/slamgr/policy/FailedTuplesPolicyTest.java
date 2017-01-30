@@ -40,7 +40,7 @@ public class FailedTuplesPolicyTest {
     visitor.initialize(null, topology);
 
     FailedTuplesPolicy policy = new FailedTuplesPolicy();
-    policy.initialize(null, topology, visitor);
+    policy.initialize(null, null, topology, visitor);
 
     for (int i = 0; i < 10; i++) {
       policy.execute();

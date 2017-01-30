@@ -14,6 +14,7 @@
 
 package com.twitter.heron.slamgr;
 
+import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -42,7 +43,9 @@ import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
 import com.twitter.heron.spi.slamgr.SLAPolicy;
 import com.twitter.heron.spi.statemgr.IStateManager;
 import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
+import com.twitter.heron.spi.utils.LauncherUtils;
 import com.twitter.heron.spi.utils.ReflectionUtils;
+import com.twitter.heron.spi.utils.Shutdown;
 
 /**
  * e.g. options
@@ -51,7 +54,9 @@ import com.twitter.heron.spi.utils.ReflectionUtils;
 public class SLAManager {
   private static final Logger LOG = Logger.getLogger(SLAManager.class.getName());
   private static String topologyName;
+  private static Properties schedulerProperties;
   private final Config config;
+  private Config runtime;
   private SLAPolicy policy;
   private SinkVisitor sinkVisitor;
   private ScheduledExecutorService executor;
@@ -224,6 +229,12 @@ public class SLAManager {
     String configPath = cmd.getOptionValue("config_path");
     topologyName = cmd.getOptionValue("topology_name");
 
+    // It returns a new empty Properties instead of null,
+    // if no properties passed from command line. So no need for null check.
+    schedulerProperties =
+        cmd.getOptionProperties(Keys.SCHEDULER_COMMAND_LINE_PROPERTIES_OVERRIDE_OPTION);
+
+
     // first load the defaults, then the config from files to override it
     // next add config parameters from the command line
     // load the topology configs
@@ -235,6 +246,7 @@ public class SLAManager {
             .putAll(commandLineConfigs(cluster, role, environ, verbose))
             .put(Keys.topologyName(), topologyName)
             .build());
+
 
     LOG.info("Static config loaded successfully ");
     LOG.fine(config.toString());
@@ -253,10 +265,11 @@ public class SLAManager {
 
   private void initialize() throws ReflectiveOperationException {
     getTopologyFromStateManager();
+    getRuntime();
     sinkVisitor = new TrackerVisitor();
     sinkVisitor.initialize(config, topology);
     policy = new FailedTuplesPolicy();
-    policy.initialize(config, topology, sinkVisitor);
+    policy.initialize(config, runtime, topology, sinkVisitor);
   }
 
   private void getTopologyFromStateManager() throws ReflectiveOperationException {
@@ -269,6 +282,21 @@ public class SLAManager {
     if (topology == null) {
       throw new RuntimeException(String.format("Failed to fetch topology: %s", topologyName));
     }
+
+  }
+
+  private void getRuntime() throws ReflectiveOperationException {
+    String statemgrClass = Context.stateManagerClass(config);
+    IStateManager statemgr = ReflectionUtils.newInstance(statemgrClass);
+    statemgr.initialize(config);
+    SchedulerStateManagerAdaptor adaptor = new SchedulerStateManagerAdaptor(statemgr, 5000);
+    // build the runtime config
+    LauncherUtils launcherUtils = LauncherUtils.getInstance();
+    this.runtime = Config.newBuilder()
+        .putAll(launcherUtils.getPrimaryRuntime(topology, adaptor))
+        .put(Keys.schedulerShutdown(), getShutdown())
+        .put(Keys.SCHEDULER_PROPERTIES, schedulerProperties)
+        .build();
   }
 
   private ScheduledFuture<?> start() {
@@ -282,6 +310,11 @@ public class SLAManager {
     }, 1, 15, TimeUnit.SECONDS);
 
     return future;
+  }
+
+  // Utils method
+  protected Shutdown getShutdown() {
+    return new Shutdown();
   }
 
 }
