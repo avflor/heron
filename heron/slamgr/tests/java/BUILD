@@ -62,6 +62,8 @@ java_tests(
        "com.twitter.heron.slamgr.detector.FailedTuplesDetectorTest",
        "com.twitter.heron.slamgr.policy.FailedTuplesPolicyTest",
        "com.twitter.heron.slamgr.detector.ProcessingSkewDetectorTest",
+       "com.twitter.heron.slamgr.policy.BackPressurePolicyTest",
+
 
      ],
      runtime_deps = [ ":slamgr-tests" ],

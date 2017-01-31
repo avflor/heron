@@ -50,7 +50,7 @@ public class ScaleUpResolver implements IResolver<ComponentBottleneck> {
   public void initialize(Config config, Config runtime) {
     this.config = config;
     this.runtime = runtime;
-    schedulerClient = getSchedulerClient(runtime);
+    //schedulerClient = getSchedulerClient(runtime);
   }
 
   @Override

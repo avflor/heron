@@ -1,4 +1,3 @@
-
 // Copyright 2016 Twitter. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package com.twitter.heron.slamgr.resolver;
+
+package com.twitter.heron.slamgr.policy;
 
 import com.google.common.util.concurrent.SettableFuture;
 
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -26,23 +25,13 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.api.topology.TopologyBuilder;
-import com.twitter.heron.packing.roundrobin.RoundRobinPacking;
 import com.twitter.heron.proto.system.PackingPlans;
-import com.twitter.heron.slamgr.detector.BackPressureDetector;
-import com.twitter.heron.slamgr.detector.BackPressureResult;
 import com.twitter.heron.slamgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.slamgr.utils.TestBolt;
 import com.twitter.heron.slamgr.utils.TestSpout;
 import com.twitter.heron.slamgr.utils.TestUtils;
-import com.twitter.heron.spi.common.ClusterDefaults;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.ConfigKeys;
-import com.twitter.heron.spi.common.Keys;
-import com.twitter.heron.spi.packing.IPacking;
-import com.twitter.heron.spi.packing.PackingPlan;
-import com.twitter.heron.spi.packing.PackingPlanProtoSerializer;
-import com.twitter.heron.spi.slamgr.ComponentBottleneck;
-import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.statemgr.IStateManager;
 import com.twitter.heron.spi.utils.ReflectionUtils;
 import com.twitter.heron.spi.utils.TopologyUtils;
@@ -53,14 +42,12 @@ import static org.mockito.Mockito.when;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({
     TopologyUtils.class, ReflectionUtils.class, TopologyAPI.Topology.class})
-public class ScaleUpResolverTest {
+public class BackPressurePolicyTest {
 
   private static final String STATE_MANAGER_CLASS = "STATE_MANAGER_CLASS";
   private IStateManager stateManager;
   private Config config;
   private TopologyAPI.Topology topology;
-
-
 
   /**
    * Basic setup before executing a test case
@@ -85,22 +72,16 @@ public class ScaleUpResolverTest {
   }
 
   @Test
-  public void testResolver() {
+  public void testDetector() throws InterruptedException {
 
     TrackerVisitor visitor = new TrackerVisitor();
-    visitor.initialize(config, topology);
+    visitor.initialize(null, topology);
 
-    BackPressureDetector detector = new BackPressureDetector();
-    detector.initialize(config, visitor);
+    BackPressurePolicy policy = new BackPressurePolicy();
+    policy.initialize(config, null, topology, visitor);
 
-    Diagnosis<ComponentBottleneck> result = detector.detect(topology);
-    Assert.assertEquals(1, result.getSummary().size());
-
-    ScaleUpResolver resolver = new ScaleUpResolver();
-    resolver.initialize(config,null);
-
-    resolver.resolve(result, topology);
+    for (int i = 0; i < 10; i++) {
+      policy.execute();
+    }
   }
-
-
 }

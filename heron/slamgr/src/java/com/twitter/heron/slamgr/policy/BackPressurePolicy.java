@@ -21,6 +21,7 @@ import java.util.Set;
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.slamgr.TopologyGraph;
 import com.twitter.heron.slamgr.detector.BackPressureDetector;
+import com.twitter.heron.slamgr.outlierdetection.SimpleMADOutlierDetector;
 import com.twitter.heron.slamgr.resolver.ScaleUpResolver;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
@@ -28,12 +29,13 @@ import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.slamgr.SLAPolicy;
 
-import static com.twitter.heron.spi.slamgr.utils.BottleneckUtils.appears;
+import static com.twitter.heron.spi.slamgr.utils.BottleneckUtils.getComponentBottleneck;
 
 public class BackPressurePolicy implements SLAPolicy {
 
+  private final String BACKPRESSURE_METRIC = "__time_spent_back_pressure_by_compid";
   private BackPressureDetector detector = new BackPressureDetector();
-  private ScaleUpResolver resolver = new ScaleUpResolver();
+  private ScaleUpResolver scaleUpResolver = new ScaleUpResolver();
 
   private TopologyAPI.Topology topology;
   private ArrayList<String> topologySort = null;
@@ -44,7 +46,7 @@ public class BackPressurePolicy implements SLAPolicy {
                          SinkVisitor visitor) {
     this.topology = t;
     detector.initialize(conf, visitor);
-    resolver.initialize(conf, runtime);
+    scaleUpResolver.initialize(conf, runtime);
   }
 
   @Override
@@ -61,13 +63,18 @@ public class BackPressurePolicy implements SLAPolicy {
       if (summary.size() != 0) {
         for (int i = 0; i < topologySort.size() && !found; i++) {
           String name = topologySort.get(i);
-          ComponentBottleneck current = appears(summary, name);
+          ComponentBottleneck current = getComponentBottleneck(summary, name);
           if (current != null) {
             System.out.println("Bottleneck " + name);
-            Diagnosis<ComponentBottleneck> currentDiagnosis = new Diagnosis<>();
-            currentDiagnosis.addToDiagnosis(current);
-            resolver.resolve(currentDiagnosis, topology);
-            found = true;
+            //check is need to scaleUp
+            boolean scaleUp = needScaleUp(current, 30);
+            System.out.println(scaleUp);
+            if(scaleUp) {
+              Diagnosis<ComponentBottleneck> currentDiagnosis = new Diagnosis<>();
+              currentDiagnosis.addToDiagnosis(current);
+              scaleUpResolver.resolve(currentDiagnosis, topology);
+              found = true;
+            }
             //data skew detector
             //slow host detector
             //network partitioning
@@ -77,10 +84,21 @@ public class BackPressurePolicy implements SLAPolicy {
     }
   }
 
+  private boolean needScaleUp(ComponentBottleneck current, int threshold) {
+    Double[] dataPoints = current.getDataPoints(BACKPRESSURE_METRIC);
+    SimpleMADOutlierDetector outlierDetector = new SimpleMADOutlierDetector(1.0);
+    ArrayList<Integer> outliers = outlierDetector.detectOutliers(dataPoints);
+    System.out.println("Outliers" + outliers.toString());
+    if (outliers.size() * 100 < threshold * dataPoints.length) {
+      return true;
+    }
+    return false;
+  }
+
   @Override
   public void close() {
     detector.close();
-    resolver.close();
+    scaleUpResolver.close();
   }
 
   private ArrayList<String> getTopologySort(TopologyAPI.Topology topology) {

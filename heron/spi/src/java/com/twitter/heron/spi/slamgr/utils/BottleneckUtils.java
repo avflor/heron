@@ -20,7 +20,8 @@ import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 
 public class BottleneckUtils {
 
-  public static ComponentBottleneck appears(Set<ComponentBottleneck> summary, String component) {
+  public static ComponentBottleneck getComponentBottleneck(Set<ComponentBottleneck> summary,
+                                                           String component) {
     for (ComponentBottleneck bottleneck : summary) {
       if (bottleneck.getComponentName().equals(component)) {
         return bottleneck;

@@ -77,8 +77,7 @@ public class ProcessingSkewDetector extends ThresholdBasedDetector<ComponentBott
       Double[] dataPoints = new Double[data.size()];
       data.toArray(dataPoints);
       SimpleMADOutlierDetector outlierDetector = new SimpleMADOutlierDetector(this.getThreshold());
-      outlierDetector.load(dataPoints);
-      ArrayList<Integer> outliers = outlierDetector.detectOutliers();
+      ArrayList<Integer> outliers = outlierDetector.detectOutliers(dataPoints);
 
       int current = 0;
       if (outliers.size() != 0) {

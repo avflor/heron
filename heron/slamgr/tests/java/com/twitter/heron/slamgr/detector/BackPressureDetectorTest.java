@@ -26,18 +26,13 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.api.topology.TopologyBuilder;
-import com.twitter.heron.packing.roundrobin.RoundRobinPacking;
 import com.twitter.heron.proto.system.PackingPlans;
 import com.twitter.heron.slamgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.slamgr.utils.TestBolt;
 import com.twitter.heron.slamgr.utils.TestSpout;
-import com.twitter.heron.spi.common.ClusterDefaults;
+import com.twitter.heron.slamgr.utils.TestUtils;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.ConfigKeys;
-import com.twitter.heron.spi.common.Keys;
-import com.twitter.heron.spi.packing.IPacking;
-import com.twitter.heron.spi.packing.PackingPlan;
-import com.twitter.heron.spi.packing.PackingPlanProtoSerializer;
 import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.statemgr.IStateManager;
@@ -58,75 +53,12 @@ public class BackPressureDetectorTest {
   private Config config;
   private TopologyAPI.Topology topology;
 
-
-  public static TopologyAPI.Topology getTopology(String topologyName) {
-    TopologyBuilder topologyBuilder = new TopologyBuilder();
-
-    topologyBuilder.setSpout("word", new TestSpout(), 2);
-
-    topologyBuilder.setBolt("exclaim1", new TestBolt(), 2).
-        shuffleGrouping("word");
-
-    //topologyBuilder.setBolt("test-bolt2", new TestBolt(), 3).
-        //shuffleGrouping("test-bolt");
-
-    com.twitter.heron.api.Config topologyConfig = new com.twitter.heron.api.Config();
-    topologyConfig.put(com.twitter.heron.api.Config.TOPOLOGY_STMGRS, 2);
-
-   /* Map<String, Integer> spouts = new HashMap<>();
-    spouts.put("testSpout", 2);
-
-    Map<String, Integer> bolts = new HashMap<>();
-    bolts.put("testBolt", 3);
-
-    com.twitter.heron.api.Config topologyConfig = new com.twitter.heron.api.Config();
-    topologyConfig.put(com.twitter.heron.api.Config.TOPOLOGY_STMGRS, 1);
-
-    TopologyAPI.Topology topology =
-        TopologyTests.createTopology(topologyName, topologyConfig, spouts, bolts);*/
-
-    TopologyAPI.Topology topology =
-        topologyBuilder.createTopology().
-            setName(topologyName).
-            setConfig(topologyConfig).
-            setState(TopologyAPI.TopologyState.RUNNING).
-            getTopology();
-    return topology;
-  }
-
-  public static PackingPlan getPackingPlan(TopologyAPI.Topology topology, IPacking packing) {
-
-    Config config = Config.newBuilder()
-        .put(Keys.topologyId(), topology.getId())
-        .put(Keys.topologyName(), topology.getName())
-        .putAll(ClusterDefaults.getDefaults())
-        .build();
-
-    packing.initialize(config, topology);
-    return packing.pack();
-  }
-
-  public static PackingPlans.PackingPlan testProtoPackingPlan(
-      TopologyAPI.Topology topology, IPacking packing) {
-    PackingPlan plan = getPackingPlan(topology, packing);
-    PackingPlanProtoSerializer serializer = new PackingPlanProtoSerializer();
-    return serializer.toProto(plan);
-  }
-
-  private SettableFuture<PackingPlans.PackingPlan> getTestPacking(TopologyAPI.Topology topology) {
-    PackingPlans.PackingPlan packingPlan =
-        testProtoPackingPlan(topology, new RoundRobinPacking());
-    final SettableFuture<PackingPlans.PackingPlan> future = SettableFuture.create();
-    future.set(packingPlan);
-    return future;
-  }
-
   /**
    * Basic setup before executing a test case
    */
   @Before
   public void setUp() throws Exception {
-    this.topology = getTopology("DataSkewTopology");
+    this.topology = TestUtils.getTopology("DataSkewTopology");
     config = mock(Config.class);
     when(config.getStringValue(ConfigKeys.get("STATE_MANAGER_CLASS"))).
         thenReturn(STATE_MANAGER_CLASS);
@@ -134,7 +66,7 @@ public class BackPressureDetectorTest {
     // Mock objects to be verified
     stateManager = mock(IStateManager.class);
 
-    final SettableFuture<PackingPlans.PackingPlan> future = getTestPacking(this.topology);
+    final SettableFuture<PackingPlans.PackingPlan> future = TestUtils.getTestPacking(this.topology);
     when(stateManager.getPackingPlan(null, "DataSkewTopology")).thenReturn(future);
 
     // Mock ReflectionUtils stuff
