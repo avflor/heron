@@ -45,7 +45,7 @@ public class BackPressurePolicy implements SLAPolicy {
   public void initialize(Config conf, Config runtime, TopologyAPI.Topology t,
                          SinkVisitor visitor) {
     this.topology = t;
-    detector.initialize(conf, visitor);
+    detector.initialize(conf, runtime, visitor);
     scaleUpResolver.initialize(conf, runtime);
   }
 

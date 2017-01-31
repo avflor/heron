@@ -50,7 +50,7 @@ public class ScaleUpResolver implements IResolver<ComponentBottleneck> {
   public void initialize(Config config, Config runtime) {
     this.config = config;
     this.runtime = runtime;
-    //schedulerClient = getSchedulerClient(runtime);
+    schedulerClient = (ISchedulerClient) Runtime.schedulerClientInstance(runtime);
   }
 
   @Override
@@ -71,7 +71,6 @@ public class ScaleUpResolver implements IResolver<ComponentBottleneck> {
     Map<String, Integer> changeRequests = new HashMap<>();
     changeRequests.put(componentName, 1);
     PackingPlans.PackingPlan currentPlan = manager.getPackingPlan(topologyName);
-
 
     PackingPlans.PackingPlan proposedPlan = buildNewPackingPlan(currentPlan, changeRequests,
         topology);
@@ -98,11 +97,6 @@ public class ScaleUpResolver implements IResolver<ComponentBottleneck> {
 
   @Override
   public void close() {
-
-  }
-
-  protected ISchedulerClient getSchedulerClient(Config runtime) {
-    return new SchedulerClientFactory(config, runtime).getSchedulerClient();
   }
 
   PackingPlans.PackingPlan buildNewPackingPlan(PackingPlans.PackingPlan currentProtoPlan,

@@ -15,20 +15,20 @@
 
 package com.twitter.heron.slamgr.sinkvisitor;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import com.twitter.heron.api.generated.TopologyAPI;
+import com.twitter.heron.spi.common.Config;
+import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
+import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-
-import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
-import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 public class TrackerVisitor implements SinkVisitor {
 
@@ -47,7 +47,7 @@ public class TrackerVisitor implements SinkVisitor {
   }
 
   @Override
-  public Iterable<MetricsInfo> getNextMetric(String metric, String... component) {
+  public Collection<MetricsInfo> getNextMetric(String metric, String... component) {
     List<MetricsInfo> metricsInfo = new ArrayList<MetricsInfo>();
     for (int j = 0; j < component.length; j++) {
       target = target.queryParam("metricname", metric)
@@ -67,10 +67,11 @@ public class TrackerVisitor implements SinkVisitor {
   private List<MetricsInfo> convert(TrackerOutput output, String metricName) {
     List<MetricsInfo> metricsInfo = new ArrayList<MetricsInfo>();
     Map<String, String> instanceData = output.getResult().getMetrics().get(metricName);
-    for (String instanceName : instanceData.keySet()) {
-      metricsInfo.add(new MetricsInfo(instanceName, instanceData.get(instanceName)));
+    if (instanceData != null) {
+      for (String instanceName : instanceData.keySet()) {
+        metricsInfo.add(new MetricsInfo(instanceName, instanceData.get(instanceName)));
+      }
     }
     return metricsInfo;
   }
-
 }

@@ -82,7 +82,7 @@ public class BackPressureDetectorTest {
     visitor.initialize(config, topology);
 
     BackPressureDetector detector = new BackPressureDetector();
-    detector.initialize(config, visitor);
+    detector.initialize(config, null, visitor);
 
     Diagnosis<ComponentBottleneck> result = detector.detect(topology);
     Assert.assertEquals(1, result.getSummary().size());
