@@ -20,22 +20,23 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
+import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.api.topology.TopologyBuilder;
+import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
 import com.twitter.heron.proto.system.PackingPlans;
+import com.twitter.heron.scheduler.client.ISchedulerClient;
 import com.twitter.heron.slamgr.sinkvisitor.TrackerVisitor;
-import com.twitter.heron.slamgr.utils.TestBolt;
-import com.twitter.heron.slamgr.utils.TestSpout;
 import com.twitter.heron.slamgr.utils.TestUtils;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.common.ConfigKeys;
+import com.twitter.heron.spi.common.Constants;
+import com.twitter.heron.spi.common.Keys;
 import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.statemgr.IStateManager;
+import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
 import com.twitter.heron.spi.utils.ReflectionUtils;
 import com.twitter.heron.spi.utils.TopologyUtils;
 
@@ -52,27 +53,33 @@ public class BackPressureDetectorTest {
   private IStateManager stateManager;
   private Config config;
   private TopologyAPI.Topology topology;
+  private Config spyRuntime;
 
   /**
    * Basic setup before executing a test case
    */
   @Before
   public void setUp() throws Exception {
-    this.topology = TestUtils.getTopology("DataSkewTopology");
-    config = mock(Config.class);
-    when(config.getStringValue(ConfigKeys.get("STATE_MANAGER_CLASS"))).
-        thenReturn(STATE_MANAGER_CLASS);
+    this.topology = TestUtils.getTopology("ds");
 
-    // Mock objects to be verified
+    config = Config.newBuilder()
+        .put(Keys.repackingClass(), ResourceCompliantRRPacking.class.getName())
+        .put(Keys.instanceCpu(), "1")
+        .put(Keys.instanceRam(), 192L * Constants.MB)
+        .put(Keys.instanceDisk(), 1024L * Constants.MB)
+        .build();
+
+    spyRuntime = Mockito.spy(Config.newBuilder().build());
+
+    ISchedulerClient schedulerClient = Mockito.mock(ISchedulerClient.class);
+    when(spyRuntime.get(Keys.schedulerClientInstance())).thenReturn(schedulerClient);
+
     stateManager = mock(IStateManager.class);
+    SettableFuture<PackingPlans.PackingPlan> future = TestUtils.getTestPacking(this.topology);
+    when(stateManager.getPackingPlan(null, "ds")).thenReturn(future);
+    when(spyRuntime.get(Keys.schedulerStateManagerAdaptor()))
+        .thenReturn(new SchedulerStateManagerAdaptor(stateManager, 5000));
 
-    final SettableFuture<PackingPlans.PackingPlan> future = TestUtils.getTestPacking(this.topology);
-    when(stateManager.getPackingPlan(null, "DataSkewTopology")).thenReturn(future);
-
-    // Mock ReflectionUtils stuff
-    PowerMockito.spy(ReflectionUtils.class);
-    PowerMockito.doReturn(stateManager).
-        when(ReflectionUtils.class, "newInstance", STATE_MANAGER_CLASS);
   }
 
   @Test
@@ -82,7 +89,7 @@ public class BackPressureDetectorTest {
     visitor.initialize(config, topology);
 
     BackPressureDetector detector = new BackPressureDetector();
-    detector.initialize(config, null, visitor);
+    detector.initialize(config, spyRuntime, visitor);
 
     Diagnosis<ComponentBottleneck> result = detector.detect(topology);
     Assert.assertEquals(1, result.getSummary().size());

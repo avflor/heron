@@ -33,6 +33,7 @@ public class SimpleMADOutlierDetector extends OutlierDetector {
     System.out.println(outlierMetric + " " + median + " " + Arrays.toString(dataPoints));
     ArrayList<Integer> outliers = new ArrayList<Integer>();
     for (int i = 0; i < dataPoints.length; i++) {
+      System.out.println("OOO " + (dataPoints[i] - median) + " " + Math.abs(dataPoints[i] - median) + " " + getThreshold() * outlierMetric);
       if (Math.abs(dataPoints[i] - median) > getThreshold() * outlierMetric) {
         outliers.add(i);
       }

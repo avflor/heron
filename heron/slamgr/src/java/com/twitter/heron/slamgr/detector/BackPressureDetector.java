@@ -15,6 +15,7 @@ package com.twitter.heron.slamgr.detector;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.proto.system.PackingPlans;
+import com.twitter.heron.slamgr.utils.SLAManagerUtils;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
 import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
@@ -47,51 +48,13 @@ public class BackPressureDetector implements IDetector<ComponentBottleneck> {
     return true;
   }
 
-  public String getBackPressureMetric(PackingPlan.ContainerPlan containerPlan,
-                                      PackingPlan.InstancePlan instancePlan) {
-    String name = "container_" + containerPlan.getId()
-        + "_" + instancePlan.getComponentName()
-        + "_" + instancePlan.getTaskId();
-    //System.out.println(BACKPRESSURE_METRIC +"/" + name);
-    Collection<MetricsInfo> metricsResults =
-        this.visitor.getNextMetric(BACKPRESSURE_METRIC + "/" + name, "__stmgr__");
-    if (metricsResults.size() > 1) {
-      throw new IllegalStateException(
-          String.format("More than one metric (%d) received for %s", metricsResults.size(), BACKPRESSURE_METRIC));
-    }
-
-    if (metricsResults.isEmpty()) {
-      return null;
-    }
-    return metricsResults.iterator().next().getValue();
-  }
-
   @Override
   public Diagnosis<ComponentBottleneck> detect(TopologyAPI.Topology topology)
       throws RuntimeException {
 
     PackingPlan packingPlan = getPackingPlan(topology);
-    HashMap<String, ComponentBottleneck> results = new HashMap<>();
-    for (PackingPlan.ContainerPlan containerPlan : packingPlan.getContainers()) {
-      for (PackingPlan.InstancePlan instancePlan : containerPlan.getInstances()) {
-        String metricValue = getBackPressureMetric(containerPlan, instancePlan);
-        if (metricValue == null) {
-          continue;
-        }
-        MetricsInfo metric = new MetricsInfo(BACKPRESSURE_METRIC, metricValue);
-        ComponentBottleneck currentBottleneck;
-        if (!results.containsKey(instancePlan.getComponentName())) {
-          currentBottleneck = new ComponentBottleneck(instancePlan.getComponentName());
-        } else {
-          currentBottleneck = results.get(instancePlan.getComponentName());
-        }
-        Set<MetricsInfo> metrics = new HashSet<>();
-        metrics.add(metric);
-        currentBottleneck.add(containerPlan.getId(),
-            instancePlan.getTaskId(), metrics);
-        results.put(instancePlan.getComponentName(), currentBottleneck);
-      }
-    }
+    HashMap<String, ComponentBottleneck> results = SLAManagerUtils.retrieveMetricValues(
+        BACKPRESSURE_METRIC, "__stmgr__", this.visitor, packingPlan);
 
     Set<ComponentBottleneck> bottlenecks = new HashSet<ComponentBottleneck>();
     for (ComponentBottleneck bottleneck : results.values()) {
@@ -102,6 +65,7 @@ public class BackPressureDetector implements IDetector<ComponentBottleneck> {
     }
     return new Diagnosis<ComponentBottleneck>(bottlenecks);
   }
+
 
   private PackingPlan getPackingPlan(TopologyAPI.Topology topology) {
     // get a packed plan and schedule it

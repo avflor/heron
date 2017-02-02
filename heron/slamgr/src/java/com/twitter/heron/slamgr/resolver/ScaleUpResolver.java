@@ -23,7 +23,6 @@ import com.twitter.heron.common.basics.SysUtils;
 import com.twitter.heron.proto.scheduler.Scheduler;
 import com.twitter.heron.proto.system.PackingPlans;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
-import com.twitter.heron.scheduler.client.SchedulerClientFactory;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Context;
 import com.twitter.heron.spi.packing.IRepacking;
@@ -69,7 +68,7 @@ public class ScaleUpResolver implements IResolver<ComponentBottleneck> {
 
     SchedulerStateManagerAdaptor manager = Runtime.schedulerStateManagerAdaptor(runtime);
     Map<String, Integer> changeRequests = new HashMap<>();
-    changeRequests.put(componentName, 1);
+    changeRequests.put(componentName, 3);
     PackingPlans.PackingPlan currentPlan = manager.getPackingPlan(topologyName);
 
     PackingPlans.PackingPlan proposedPlan = buildNewPackingPlan(currentPlan, changeRequests,
