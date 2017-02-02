@@ -1,4 +1,3 @@
-
 // Copyright 2016 Twitter. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,43 +13,30 @@
 // limitations under the License.
 package com.twitter.heron.slamgr.resolver;
 
-import com.google.common.util.concurrent.SettableFuture;
-
-import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
-import com.twitter.heron.scheduler.client.ISchedulerClient;
-import com.twitter.heron.spi.common.Constants;
-import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.api.topology.TopologyBuilder;
-import com.twitter.heron.packing.roundrobin.RoundRobinPacking;
-import com.twitter.heron.proto.system.PackingPlans;
+import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
+import com.twitter.heron.scheduler.client.ISchedulerClient;
+import com.twitter.heron.scheduler.client.SchedulerClientFactory;
 import com.twitter.heron.slamgr.detector.BackPressureDetector;
 import com.twitter.heron.slamgr.sinkvisitor.TrackerVisitor;
-import com.twitter.heron.slamgr.utils.TestBolt;
-import com.twitter.heron.slamgr.utils.TestSpout;
 import com.twitter.heron.slamgr.utils.TestUtils;
-import com.twitter.heron.spi.common.ClusterDefaults;
 import com.twitter.heron.spi.common.Config;
+import com.twitter.heron.spi.common.Constants;
 import com.twitter.heron.spi.common.Keys;
-import com.twitter.heron.spi.packing.IPacking;
-import com.twitter.heron.spi.packing.PackingPlan;
-import com.twitter.heron.spi.packing.PackingPlanProtoSerializer;
 import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 import com.twitter.heron.spi.slamgr.Diagnosis;
 import com.twitter.heron.spi.statemgr.IStateManager;
+import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
+import com.twitter.heron.statemgr.localfs.LocalFileSystemStateManager;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class ScaleUpResolverTest {
   private IStateManager stateManager;
   private TopologyAPI.Topology topology;
-
 
 
   /**
@@ -68,31 +54,40 @@ public class ScaleUpResolverTest {
         .put(Keys.instanceCpu(), "1")
         .put(Keys.instanceRam(), 192L * Constants.MB)
         .put(Keys.instanceDisk(), 1024L * Constants.MB)
+        .put(Keys.stateManagerRootPath(), "~/.herondata/repository/state/local")
+        .put(Keys.stateManagerClass(), LocalFileSystemStateManager.class.getName())
         .build();
 
-    Config spyRuntime = Mockito.spy(Config.newBuilder().build());
+    stateManager = new LocalFileSystemStateManager();
+    stateManager.initialize(config);
+    SchedulerStateManagerAdaptor adaptor =
+        new SchedulerStateManagerAdaptor(stateManager, 5000);
 
-    ISchedulerClient schedulerClient = Mockito.mock(ISchedulerClient.class);
-    when(spyRuntime.get(Keys.schedulerClientInstance())).thenReturn(schedulerClient);
+    Config runtime = Config.newBuilder()
+        .put(Keys.schedulerStateManagerAdaptor(), adaptor)
+        .put(Keys.topologyName(), "ds")
+        .build();
 
-    stateManager = mock(IStateManager.class);
-    SettableFuture<PackingPlans.PackingPlan> future = TestUtils.getTestPacking(this.topology);
-    when(stateManager.getPackingPlan(null, "ds")).thenReturn(future);
-    when(spyRuntime.get(Keys.schedulerStateManagerAdaptor()))
-        .thenReturn(new SchedulerStateManagerAdaptor(stateManager, 5000));
+    ISchedulerClient schedulerClient = new SchedulerClientFactory(config, runtime).getSchedulerClient();
 
+    runtime = Config.newBuilder()
+        .putAll(runtime)
+        .put(Keys.schedulerClientInstance(), schedulerClient)
+        .build();
 
     TrackerVisitor visitor = new TrackerVisitor();
     visitor.initialize(config, topology);
 
     BackPressureDetector detector = new BackPressureDetector();
-    detector.initialize(config, spyRuntime, visitor);
+
+    detector.initialize(config, runtime, visitor);
 
     Diagnosis<ComponentBottleneck> result = detector.detect(topology);
     Assert.assertEquals(1, result.getSummary().size());
 
     ScaleUpResolver resolver = new ScaleUpResolver();
-    resolver.initialize(config, spyRuntime);
+
+    resolver.initialize(config, runtime);
 
     resolver.resolve(result, topology);
   }

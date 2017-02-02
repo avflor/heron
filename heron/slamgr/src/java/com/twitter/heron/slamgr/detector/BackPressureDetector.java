@@ -63,7 +63,6 @@ public class BackPressureDetector implements IDetector<ComponentBottleneck> {
     if (metricsResults.isEmpty()) {
       return null;
     }
-
     return metricsResults.iterator().next().getValue();
   }
 
