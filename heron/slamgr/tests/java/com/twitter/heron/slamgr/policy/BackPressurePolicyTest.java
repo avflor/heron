@@ -14,34 +14,23 @@
 
 package com.twitter.heron.slamgr.policy;
 
-import com.google.common.util.concurrent.SettableFuture;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.api.topology.TopologyBuilder;
-import com.twitter.heron.proto.system.PackingPlans;
+import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
+import com.twitter.heron.scheduler.client.ISchedulerClient;
+import com.twitter.heron.scheduler.client.SchedulerClientFactory;
 import com.twitter.heron.slamgr.sinkvisitor.TrackerVisitor;
-import com.twitter.heron.slamgr.utils.TestBolt;
-import com.twitter.heron.slamgr.utils.TestSpout;
 import com.twitter.heron.slamgr.utils.TestUtils;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.common.ConfigKeys;
+import com.twitter.heron.spi.common.Constants;
+import com.twitter.heron.spi.common.Keys;
 import com.twitter.heron.spi.statemgr.IStateManager;
-import com.twitter.heron.spi.utils.ReflectionUtils;
-import com.twitter.heron.spi.utils.TopologyUtils;
+import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
+import com.twitter.heron.statemgr.localfs.LocalFileSystemStateManager;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({
-    TopologyUtils.class, ReflectionUtils.class, TopologyAPI.Topology.class})
 public class BackPressurePolicyTest {
 
   private static final String STATE_MANAGER_CLASS = "STATE_MANAGER_CLASS";
@@ -54,34 +43,46 @@ public class BackPressurePolicyTest {
    */
   @Before
   public void setUp() throws Exception {
-    this.topology = TestUtils.getTopology("DataSkewTopology");
-    config = mock(Config.class);
-    when(config.getStringValue(ConfigKeys.get("STATE_MANAGER_CLASS"))).
-        thenReturn(STATE_MANAGER_CLASS);
-
-    // Mock objects to be verified
-    stateManager = mock(IStateManager.class);
-
-    final SettableFuture<PackingPlans.PackingPlan> future = TestUtils.getTestPacking(this.topology);
-    when(stateManager.getPackingPlan(null, "DataSkewTopology")).thenReturn(future);
-
-    // Mock ReflectionUtils stuff
-    PowerMockito.spy(ReflectionUtils.class);
-    PowerMockito.doReturn(stateManager).
-        when(ReflectionUtils.class, "newInstance", STATE_MANAGER_CLASS);
+    this.topology = TestUtils.getTopology("ds");
   }
 
   @Test
-  public void testDetector() throws InterruptedException {
+  public void testPolicy() throws InterruptedException {
 
+    Config config = Config.newBuilder()
+        .put(Keys.repackingClass(), ResourceCompliantRRPacking.class.getName())
+        .put(Keys.instanceCpu(), "1")
+        .put(Keys.instanceRam(), 192L * Constants.MB)
+        .put(Keys.instanceDisk(), 1024L * Constants.MB)
+        .put(Keys.stateManagerRootPath(), "/home/avrilia/.herondata/repository/state/local")
+        .put(Keys.stateManagerClass(), LocalFileSystemStateManager.class.getName())
+        .build();
+
+    stateManager = new LocalFileSystemStateManager();
+    stateManager.initialize(config);
+    SchedulerStateManagerAdaptor adaptor =
+        new SchedulerStateManagerAdaptor(stateManager, 5000);
+
+    Config runtime = Config.newBuilder()
+        .put(Keys.schedulerStateManagerAdaptor(), adaptor)
+        .put(Keys.topologyName(), "ds")
+        .build();
+
+    ISchedulerClient schedulerClient = new SchedulerClientFactory(config, runtime)
+        .getSchedulerClient();
+
+
+    runtime = Config.newBuilder()
+        .putAll(runtime)
+        .put(Keys.schedulerClientInstance(), schedulerClient)
+        .build();
     TrackerVisitor visitor = new TrackerVisitor();
-    visitor.initialize(null, topology);
+
+    visitor.initialize(config, topology);
 
     BackPressurePolicy policy = new BackPressurePolicy();
-    policy.initialize(config, null, topology, visitor);
+    policy.initialize(config, runtime, topology, visitor);
 
-    for (int i = 0; i < 10; i++) {
-      policy.execute();
-    }
+    policy.execute();
   }
 }

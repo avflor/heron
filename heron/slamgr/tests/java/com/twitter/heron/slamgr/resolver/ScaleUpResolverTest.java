@@ -54,7 +54,7 @@ public class ScaleUpResolverTest {
         .put(Keys.instanceCpu(), "1")
         .put(Keys.instanceRam(), 192L * Constants.MB)
         .put(Keys.instanceDisk(), 1024L * Constants.MB)
-        .put(Keys.stateManagerRootPath(), "~/.herondata/repository/state/local")
+        .put(Keys.stateManagerRootPath(), "/home/avrilia/.herondata/repository/state/local")
         .put(Keys.stateManagerClass(), LocalFileSystemStateManager.class.getName())
         .build();
 
@@ -68,7 +68,8 @@ public class ScaleUpResolverTest {
         .put(Keys.topologyName(), "ds")
         .build();
 
-    ISchedulerClient schedulerClient = new SchedulerClientFactory(config, runtime).getSchedulerClient();
+    ISchedulerClient schedulerClient = new SchedulerClientFactory(config, runtime)
+        .getSchedulerClient();
 
     runtime = Config.newBuilder()
         .putAll(runtime)

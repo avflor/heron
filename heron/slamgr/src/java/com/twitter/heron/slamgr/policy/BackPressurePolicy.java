@@ -21,6 +21,7 @@ import java.util.Set;
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.slamgr.TopologyGraph;
 import com.twitter.heron.slamgr.detector.BackPressureDetector;
+import com.twitter.heron.slamgr.detector.ReportingDetector;
 import com.twitter.heron.slamgr.outlierdetection.SimpleMADOutlierDetector;
 import com.twitter.heron.slamgr.resolver.ScaleUpResolver;
 import com.twitter.heron.spi.common.Config;
@@ -34,7 +35,8 @@ import static com.twitter.heron.spi.slamgr.utils.BottleneckUtils.getComponentBot
 public class BackPressurePolicy implements SLAPolicy {
 
   private final String BACKPRESSURE_METRIC = "__time_spent_back_pressure_by_compid";
-  private BackPressureDetector detector = new BackPressureDetector();
+  private BackPressureDetector backpressureDetector = new BackPressureDetector();
+  private ReportingDetector executeCountDetector = new ReportingDetector("__execute-count/default");
   private ScaleUpResolver scaleUpResolver = new ScaleUpResolver();
 
   private TopologyAPI.Topology topology;
@@ -45,13 +47,14 @@ public class BackPressurePolicy implements SLAPolicy {
   public void initialize(Config conf, Config runtime, TopologyAPI.Topology t,
                          SinkVisitor visitor) {
     this.topology = t;
-    detector.initialize(conf, runtime, visitor);
+    backpressureDetector.initialize(conf, runtime, visitor);
+    executeCountDetector.initialize(conf, runtime, visitor);
     scaleUpResolver.initialize(conf, runtime);
   }
 
   @Override
   public void execute() {
-    Diagnosis<ComponentBottleneck> diagnosis = detector.detect(topology);
+    Diagnosis<ComponentBottleneck> diagnosis = backpressureDetector.detect(topology);
     boolean found = false;
 
     if (diagnosis != null) {
@@ -68,7 +71,8 @@ public class BackPressurePolicy implements SLAPolicy {
             System.out.println("Bottleneck " + name);
             //check is need to scaleUp
             boolean scaleUp = needScaleUp(current, 30);
-            System.out.println(scaleUp);
+            executeCountDetector.detect(topology);
+            System.out.println("LLLL " + scaleUp);
             if(scaleUp) {
               Diagnosis<ComponentBottleneck> currentDiagnosis = new Diagnosis<>();
               currentDiagnosis.addToDiagnosis(current);
@@ -97,7 +101,8 @@ public class BackPressurePolicy implements SLAPolicy {
 
   @Override
   public void close() {
-    detector.close();
+    backpressureDetector.close();
+    executeCountDetector.close();
     scaleUpResolver.close();
   }
 
