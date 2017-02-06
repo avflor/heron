@@ -66,7 +66,7 @@ public class ReportingDetector implements IDetector<ComponentBottleneck> {
       }
       bottlenecks.add(currentBottleneck);
     }
-    System.out.println(bottlenecks.toString());
+    //System.out.println(bottlenecks.toString());
     return new Diagnosis<ComponentBottleneck>(bottlenecks);
   }
 

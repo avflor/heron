@@ -16,6 +16,7 @@ package com.twitter.heron.spi.slamgr.utils;
 
 import java.util.Set;
 
+import com.twitter.heron.spi.slamgr.Bottleneck;
 import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 
 public class BottleneckUtils {
@@ -30,5 +31,14 @@ public class BottleneckUtils {
     return null;
   }
 
-
+  public static void merge(Set<ComponentBottleneck> firstSummary,
+                                                Set<ComponentBottleneck> secondSummary){
+    for(ComponentBottleneck firstBottleneck: firstSummary){
+      for(ComponentBottleneck secondBottleneck : secondSummary){
+        if(firstBottleneck.getComponentName().equals(secondBottleneck.getComponentName())){
+          firstBottleneck.merge(secondBottleneck);
+        }
+      }
+    }
+  }
 }

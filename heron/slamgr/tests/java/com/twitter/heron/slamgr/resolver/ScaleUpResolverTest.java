@@ -89,7 +89,7 @@ public class ScaleUpResolverTest {
     ScaleUpResolver resolver = new ScaleUpResolver();
 
     resolver.initialize(config, runtime);
-
+    resolver.setParallelism(3);
     resolver.resolve(result, topology);
   }
 }

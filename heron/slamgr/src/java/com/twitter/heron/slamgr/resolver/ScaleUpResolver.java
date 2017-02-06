@@ -44,6 +44,11 @@ public class ScaleUpResolver implements IResolver<ComponentBottleneck> {
   private Config config;
   private Config runtime;
   private ISchedulerClient schedulerClient;
+  private int newParallelism;
+
+  public void setParallelism(int parallelism){
+    this.newParallelism = parallelism;
+  }
 
   @Override
   public void initialize(Config config, Config runtime) {
@@ -59,6 +64,11 @@ public class ScaleUpResolver implements IResolver<ComponentBottleneck> {
       throw new RuntimeException("Not valid diagnosis object");
     }
 
+    if(this.newParallelism == 0){
+      throw new RuntimeException("New parallelism after scale up is 0." +
+          " Please set the parallelism value");
+    }
+
     ComponentBottleneck bottleneck = diagnosis.getSummary().iterator().next();
     String componentName = bottleneck.getComponentName();
 
@@ -68,7 +78,7 @@ public class ScaleUpResolver implements IResolver<ComponentBottleneck> {
 
     SchedulerStateManagerAdaptor manager = Runtime.schedulerStateManagerAdaptor(runtime);
     Map<String, Integer> changeRequests = new HashMap<>();
-    changeRequests.put(componentName, 3);
+    changeRequests.put(componentName, this.newParallelism);
     PackingPlans.PackingPlan currentPlan = manager.getPackingPlan(topologyName);
 
     PackingPlans.PackingPlan proposedPlan = buildNewPackingPlan(currentPlan, changeRequests,
