@@ -36,24 +36,16 @@ import com.twitter.heron.spi.healthmgr.utils.BottleneckUtils;
 
 public class BackPressurePolicy implements SLAPolicy {
 
-  enum Problem {
-    SLOW_INSTANCE, DATA_SKEW, LIMITED_PARALLELISM
-  }
-
   private final String BACKPRESSURE_METRIC = "__time_spent_back_pressure_by_compid";
   private final String EXECUTION_COUNT_METRIC = "__execute-count/default";
   private final String EMIT_COUNT_METRIC = "__emit-count/default";
-
   private BackPressureDetector backpressureDetector = new BackPressureDetector();
   private ReportingDetector executeCountDetector = new ReportingDetector(EXECUTION_COUNT_METRIC);
   private ScaleUpResolver scaleUpResolver = new ScaleUpResolver();
   private ReportingDetector emitCountDetector = new ReportingDetector(EMIT_COUNT_METRIC);
-
   private TopologyAPI.Topology topology;
   private TopologyGraph topologyGraph;
-
   private ArrayList<String> topologySort = null;
-
 
   @Override
   public void initialize(Config conf, Config runtime) {
@@ -88,25 +80,21 @@ public class BackPressurePolicy implements SLAPolicy {
           if (current != null) {
             Problem problem = identifyProblem(current);
             if (problem == Problem.LIMITED_PARALLELISM) {
-              double scaleFactor = computeScaleUpFactor(current, executeCountSummary);
-              int newParallelism = (int) Math.ceil(current.getInstances().size() * scaleFactor);
+              double scaleFactor = 2; //computeScaleUpFactor(current, executeCountSummary);
+              int newParallelism = current.getInstances().size() + 2;//(int) Math.ceil(current.getInstances().size() * scaleFactor);
               System.out.println("scale factor" + scaleFactor + " " + newParallelism);
-
-              if (false) {
-                Diagnosis<ComponentBottleneck> currentDiagnosis = new Diagnosis<>();
-                currentDiagnosis.addToDiagnosis(current);
-                newParallelism = (int) Math.ceil(current.getInstances().size() * scaleFactor);
-                scaleUpResolver.setParallelism(newParallelism);
-                scaleUpResolver.resolve(currentDiagnosis, topology);
-                found = true;
-              }
+              Diagnosis<ComponentBottleneck> currentDiagnosis = new Diagnosis<>();
+              currentDiagnosis.addToDiagnosis(current);
+              newParallelism = (int) Math.ceil(current.getInstances().size() * scaleFactor);
+              scaleUpResolver.setParallelism(newParallelism);
+              scaleUpResolver.resolve(currentDiagnosis, topology);
+              found = true;
             }
           }
         }
       }
     }
   }
-
 
   private double computeScaleUpFactor(ComponentBottleneck current, Set<ComponentBottleneck>
       executeCountSummary) {
@@ -124,7 +112,6 @@ public class BackPressurePolicy implements SLAPolicy {
     System.out.println("LLL " + emitSum + " " + executeCountSum + " " + emitSum / executeCountSum);
     return emitSum / executeCountSum;
   }
-
 
   private Problem identifyProblem(ComponentBottleneck current) {
     Double[] backPressureDataPoints = current.getDataPoints(BACKPRESSURE_METRIC);
@@ -203,5 +190,9 @@ public class BackPressurePolicy implements SLAPolicy {
     TopologyGraph tmp = new TopologyGraph(this.topologyGraph);
 
     return tmp.topologicalSort();
+  }
+
+  enum Problem {
+    SLOW_INSTANCE, DATA_SKEW, LIMITED_PARALLELISM
   }
 }
