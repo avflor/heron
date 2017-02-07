@@ -24,6 +24,8 @@ import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
 import com.twitter.heron.spi.packing.PackingPlan;
 import com.twitter.heron.spi.slamgr.ComponentBottleneck;
 
+import static com.twitter.heron.spi.slamgr.utils.BottleneckUtils.getComponentBottleneck;
+
 public class SLAManagerUtils {
 
   public static HashMap<String, ComponentBottleneck> retrieveMetricValues(String metricName,
@@ -95,6 +97,5 @@ public class SLAManagerUtils {
     data.toArray(dataPoints);
     return dataPoints;
   }
-
 
 }
