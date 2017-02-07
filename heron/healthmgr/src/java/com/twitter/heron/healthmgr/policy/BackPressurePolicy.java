@@ -124,8 +124,12 @@ public class BackPressurePolicy implements SLAPolicy {
     ArrayList<Integer> executeCountOutliers =
         executeCountOutlierDetector.detectOutliers(executionCountDataPoints);*/
 
-    if (backPressureClusters.get("1.0").size() <
-        (10 * backPressureClusters.get("0.0").size()) / 100) {
+    int clusterAt0 = backPressureClusters.get("0.0") == null ?
+        0 : backPressureClusters.get("0.0").size();
+    int clusterAt1 = backPressureClusters.get("1.0") == null
+        ? 0 : backPressureClusters.get("1.0").size();
+
+    if (clusterAt1 < (10 * clusterAt0) / 100) {
       switch (compareExecuteCounts(current)) {
         case 0:
           return Problem.LIMITED_PARALLELISM;

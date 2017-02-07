@@ -31,8 +31,11 @@ import org.apache.commons.cli.ParseException;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.common.utils.logging.LoggingHelper;
+import com.twitter.heron.healthmgr.policy.BackPressurePolicy;
 import com.twitter.heron.healthmgr.policy.FailedTuplesPolicy;
 import com.twitter.heron.healthmgr.sinkvisitor.TrackerVisitor;
+import com.twitter.heron.scheduler.client.ISchedulerClient;
+import com.twitter.heron.scheduler.client.SchedulerClientFactory;
 import com.twitter.heron.spi.common.ClusterConfig;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Context;
@@ -242,15 +245,24 @@ public class HealthManager {
 
     Config runtime = Config.newBuilder()
         .put(Key.TOPOLOGY_DEFINITION, topology)
+        .put(Key.TOPOLOGY_NAME, topology.getName())
         .put(Key.SCHEDULER_STATE_MANAGER_ADAPTOR, adaptor)
         .put(Key.METRICS_READER_INSTANCE, sinkVisitor)
+        .build();
+
+    ISchedulerClient schedulerClient = new SchedulerClientFactory(config, runtime)
+        .getSchedulerClient();
+
+    runtime = Config.newBuilder()
+        .putAll(runtime)
+        .put(Key.SCHEDULER_CLIENT_INSTANCE, schedulerClient)
         .build();
 
     // TODO rename sinkvisitor
     sinkVisitor.initialize(config, runtime);
 
     // TODO READ policy from yaml
-    policy = new FailedTuplesPolicy();
+    policy = new BackPressurePolicy();
     policy.initialize(config, runtime);
   }
 
