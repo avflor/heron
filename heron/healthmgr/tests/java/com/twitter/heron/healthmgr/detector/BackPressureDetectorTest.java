@@ -69,6 +69,7 @@ public class BackPressureDetectorTest {
 
     ISchedulerClient schedulerClient = Mockito.mock(ISchedulerClient.class);
     when(spyRuntime.get(Key.SCHEDULER_CLIENT_INSTANCE)).thenReturn(schedulerClient);
+    when(spyRuntime.get(Key.TOPOLOGY_DEFINITION)).thenReturn(topology);
 
     stateManager = mock(IStateManager.class);
     SettableFuture<PackingPlans.PackingPlan> future = TestUtils.getTestPacking(this.topology);
@@ -83,6 +84,7 @@ public class BackPressureDetectorTest {
 
     TrackerVisitor visitor = new TrackerVisitor();
     visitor.initialize(config, spyRuntime);
+    when(spyRuntime.get(Key.METRICS_READER_INSTANCE)).thenReturn(visitor);
 
     BackPressureDetector detector = new BackPressureDetector();
     detector.initialize(config, spyRuntime);

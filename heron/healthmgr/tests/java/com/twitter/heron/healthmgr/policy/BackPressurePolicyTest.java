@@ -20,10 +20,10 @@ import org.junit.Test;
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.common.basics.ByteAmount;
 import com.twitter.heron.healthmgr.sinkvisitor.TrackerVisitor;
+import com.twitter.heron.healthmgr.utils.TestUtils;
 import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
 import com.twitter.heron.scheduler.client.SchedulerClientFactory;
-import com.twitter.heron.healthmgr.utils.TestUtils;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Key;
 import com.twitter.heron.spi.statemgr.IStateManager;
@@ -71,12 +71,14 @@ public class BackPressurePolicyTest {
     ISchedulerClient schedulerClient = new SchedulerClientFactory(config, runtime)
         .getSchedulerClient();
 
+    TrackerVisitor visitor = new TrackerVisitor();
 
     runtime = Config.newBuilder()
         .putAll(runtime)
         .put(Key.SCHEDULER_CLIENT_INSTANCE, schedulerClient)
+        .put(Key.METRICS_READER_INSTANCE, visitor)
+        .put(Key.TOPOLOGY_DEFINITION, this.topology)
         .build();
-    TrackerVisitor visitor = new TrackerVisitor();
 
     visitor.initialize(config, runtime);
 
