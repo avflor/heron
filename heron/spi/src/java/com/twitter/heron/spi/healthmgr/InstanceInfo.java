@@ -42,7 +42,7 @@ public class InstanceInfo {
   }
 
   public void updateMetrics(Set<MetricsInfo> newMetrics) {
-    metrics.addAll(newMetrics);
+      metrics.addAll(newMetrics);
   }
 
   public String toString() {
@@ -55,6 +55,15 @@ public class InstanceInfo {
       return true;
     }
     return false;
+  }
+
+  public MetricsInfo containsMetricName(String metric) {
+    for (MetricsInfo currentMetric : metrics) {
+      if (currentMetric.getName().equals(metric)) {
+        return currentMetric;
+      }
+    }
+    return null;
   }
 
   public String getMetricValue(String metric) throws RuntimeException {

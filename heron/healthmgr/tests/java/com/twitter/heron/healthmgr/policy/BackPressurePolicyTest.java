@@ -96,11 +96,13 @@ public class BackPressurePolicyTest {
     BackPressurePolicy policy = new BackPressurePolicy();
     policy.initialize(config, runtime);
 
-    policy.execute();
+    for(int i = 0; i < 2; i++) {
+      policy.execute();
 
-    TimeUnit.MINUTES.sleep(3);
-    //for(int i = 0 ; i < 100; i++) {
+      TimeUnit.MINUTES.sleep(2);
+      //for(int i = 0 ; i < 100; i++) {
       policy.evaluate();
-    //}
+      //}
+    }
   }
 }

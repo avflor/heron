@@ -67,8 +67,9 @@ public class BackPressurePolicy implements HealthPolicy {
         detectorService.run(slowInstanceDetector, topology);
 
     if (slowInstanceDiagnosis != null) {
-      if (!resolverService.isBlackListedAction(topology, "SLOW_INSTANCE_RESOLVER",
+      if (resolverService.isBlackListedAction(topology, "SLOW_INSTANCE_RESOLVER",
           slowInstanceDiagnosis, slowInstanceDetector)) {
+        System.out.println("Diagnosed slow instance. Trying sth else");
 
       }
     }
@@ -77,9 +78,9 @@ public class BackPressurePolicy implements HealthPolicy {
         detectorService.run(dataSkewDetector, topology);
 
     if (dataSkewDiagnosis != null) {
-      if (!resolverService.isBlackListedAction(topology, "DATA_SKEW_RESOLVER",
+      if (resolverService.isBlackListedAction(topology, "DATA_SKEW_RESOLVER",
           dataSkewDiagnosis, dataSkewDetector)) {
-
+        System.out.println("Diagnosed data skew. Trying sth else");
       }
     }
 
@@ -93,6 +94,9 @@ public class BackPressurePolicy implements HealthPolicy {
             topology, limitedParallelismDiagnosis);
         resolverService.run(scaleUpResolver, topology, "SCALE_UP_RESOLVER",
             limitedParallelismDiagnosis, outcomeImprovement);
+      }
+      else{
+        System.out.println("Diagnosed limited parallelism. Trying sth else");
       }
     }
   }
