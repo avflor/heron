@@ -14,12 +14,9 @@
 package com.twitter.heron.healthmgr.detector;
 
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Set;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.healthmgr.clustering.DiscreteValueClustering;
 import com.twitter.heron.healthmgr.services.DetectorService;
 import com.twitter.heron.healthmgr.utils.SLAManagerUtils;
 import com.twitter.heron.scheduler.utils.Runtime;
@@ -105,51 +102,37 @@ public class DataSkewDetector implements IDetector<ComponentBottleneck> {
   }
 
   private boolean existsDataSkew(ComponentBottleneck current) {
-    Double[] backPressureDataPoints = current.getDataPoints(BACKPRESSURE_METRIC);
-    DiscreteValueClustering clustering = new DiscreteValueClustering();
-    HashMap<String, ArrayList<Integer>> backPressureClusters =
-        clustering.createBinaryClusters(backPressureDataPoints, 0.0);
-
-    int clusterAt0 = backPressureClusters.get("0.0") == null
-        ? 0 : backPressureClusters.get("0.0").size();
-    int clusterAt1 = backPressureClusters.get("1.0") == null
-        ? 0 : backPressureClusters.get("1.0").size();
-
-    if (clusterAt1 < (10 * clusterAt0) / 100) {
-      if (compareExecuteCounts(current) == 1) {
-        return true;
-      }
-    }
-    return false;
+    return compareExecuteCounts(current) == 1;
   }
 
-  private int compareExecuteCounts(ComponentBottleneck bottleneck) {
+  static int compareExecuteCounts(ComponentBottleneck bottleneck) {
+    double sumBPExecuteCounts = 0;
+    double sumNonBPExecuteCounts = 0;
+    int bpInstanceCount = 0;
 
-    double backPressureExecuteCounts = 0;
-    double nonBackPressureExecuteCounts = 0;
-    int noBackPressureInstances = 0;
-    for (int j = 0; j < bottleneck.getInstances().size(); j++) {
+    final int totalInstances = bottleneck.getInstances().size();
+
+    for (int j = 0; j < totalInstances; j++) {
       InstanceBottleneck currentInstance = bottleneck.getInstances().get(j);
-      if (!currentInstance.getInstanceData().getMetricValue(BACKPRESSURE_METRIC).equals("0.0")) {
-        backPressureExecuteCounts += Double.parseDouble(
-            currentInstance.getInstanceData().getMetricValue(EXECUTION_COUNT_METRIC));
-        noBackPressureInstances++;
+      long executionCount =
+          Long.valueOf(currentInstance.getInstanceData().getMetricValue(EXECUTION_COUNT_METRIC));
+      if (currentInstance.getInstanceData().getMetricValue(BACKPRESSURE_METRIC).equals("0.0")) {
+        sumNonBPExecuteCounts += executionCount;
       } else {
-        nonBackPressureExecuteCounts += Double.parseDouble(
-            currentInstance.getInstanceData().getMetricValue(EXECUTION_COUNT_METRIC));
+        sumBPExecuteCounts += executionCount;
+        bpInstanceCount++;
       }
     }
-    int noNonBackPressureInstances = bottleneck.getInstances().size() - noBackPressureInstances;
-    if (backPressureExecuteCounts / noBackPressureInstances > 2 * (
-        nonBackPressureExecuteCounts / noNonBackPressureInstances)) {
-      return 1;
+
+    double avgBPExecuteCount = sumBPExecuteCounts / bpInstanceCount;
+    double avgNonBPExecuteCount = sumNonBPExecuteCounts / (totalInstances - bpInstanceCount);
+
+    if (avgBPExecuteCount > 2 * avgNonBPExecuteCount) {
+      return 1; // data skew
+    } else if (avgBPExecuteCount < 0.5 * avgNonBPExecuteCount) {
+      return -1; // slow instance
     } else {
-      if (backPressureExecuteCounts / noBackPressureInstances < 0.5 * (
-          nonBackPressureExecuteCounts / noNonBackPressureInstances)) {
-        return -1;
-      } else {
-        return 0;
-      }
+      return 0;
     }
   }
 }
