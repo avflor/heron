@@ -27,7 +27,6 @@ import com.twitter.heron.spi.healthmgr.utils.BottleneckUtils;
 
 public class LimitedParallelismDetector implements IDetector<ComponentBottleneck> {
 
-  private static final String BACKPRESSURE_METRIC = "__time_spent_back_pressure_by_compid";
   private static final String EXECUTION_COUNT_METRIC = "__execute-count/default";
 
   private Config runtime;
