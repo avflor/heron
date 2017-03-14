@@ -19,10 +19,10 @@ import java.util.Set;
 import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
 import com.twitter.heron.spi.packing.PackingPlan.InstancePlan;
 
-public class InstanceBottleneck extends Bottleneck {
+public class InstanceSymptom extends Symptom {
   private InstanceInfo instanceData;
 
-  public InstanceBottleneck(int containerId, InstancePlan instance, Set<MetricsInfo> metrics) {
+  public InstanceSymptom(int containerId, InstancePlan instance, Set<MetricsInfo> metrics) {
     this.instanceData = new InstanceInfo(containerId, instance, metrics);
   }
 

@@ -13,5 +13,5 @@
 // limitations under the License.
 package com.twitter.heron.spi.healthmgr;
 
-public class Bottleneck {
+public class Symptom {
 }

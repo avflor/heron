@@ -65,7 +65,7 @@ java_test(
 
 java_test(
     name = "ComponentBottleneckTest",
-    srcs = glob(["**/healthmgr/ComponentBottleneckTest.java"]),
+    srcs = glob(["**/healthmgr/ComponentSymptomTest.java"]),
     deps = util_deps_files +
       [
       "//heron/spi/src/java:metricsmgr-spi-java",

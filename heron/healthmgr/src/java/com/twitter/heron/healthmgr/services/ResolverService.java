@@ -20,10 +20,10 @@ import com.twitter.heron.healthmgr.actionlog.ActionBlackList;
 import com.twitter.heron.healthmgr.actionlog.ActionEntry;
 import com.twitter.heron.healthmgr.actionlog.ActionLog;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.healthmgr.Bottleneck;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
-import com.twitter.heron.spi.healthmgr.IDetector;
+import com.twitter.heron.spi.healthmgr.IDiagnoser;
 import com.twitter.heron.spi.healthmgr.IResolver;
+import com.twitter.heron.spi.healthmgr.Symptom;
 
 public class ResolverService {
 
@@ -40,45 +40,45 @@ public class ResolverService {
   }
 
 
-  public <T extends Bottleneck> double estimateResolverOutcome(IResolver<T> resolver,
-                                                               TopologyAPI.Topology topology,
-                                                               Diagnosis<T> diagnosis) {
+  public <T extends Symptom> double estimateResolverOutcome(IResolver<T> resolver,
+                                                            TopologyAPI.Topology topology,
+                                                            Diagnosis<T> diagnosis) {
     return resolver.estimateOutcome(diagnosis, topology);
   }
 
 
-  public <T extends Bottleneck> boolean run(IResolver<T> resolver, TopologyAPI.Topology topology,
-                                            String problem, Diagnosis<T> diagnosis,
-                                            double outcome) {
+  public <T extends Symptom> boolean run(IResolver<T> resolver, TopologyAPI.Topology topology,
+                                         String problem, Diagnosis<T> diagnosis,
+                                         double outcome) {
 
     log.addAction(topology.getName(), problem, diagnosis, outcome);
     return resolver.resolve(diagnosis, topology);
   }
 
-  public <T extends Bottleneck> void addToBlackList(TopologyAPI.Topology topology,
-                                                    String actionTaken,
-                                                    Diagnosis<T> data, double change) {
+  public <T extends Symptom> void addToBlackList(TopologyAPI.Topology topology,
+                                                 String actionTaken,
+                                                 Diagnosis<T> data, double change) {
     blacklist.addToBlackList(topology.getName(), actionTaken, data, change);
     System.out.println("blacklist " + blacklist.toString());
   }
 
-  public <T extends Bottleneck> boolean isSuccesfulAction(IResolver<T> resolver,
-                                                          Diagnosis<T> firstDiagnosis,
-                                                          Diagnosis<T> secondDiagnosis,
-                                                          double change) {
+  public <T extends Symptom> boolean isSuccessfulAction(IResolver<T> resolver,
+                                                       Diagnosis<T> firstDiagnosis,
+                                                       Diagnosis<T> secondDiagnosis,
+                                                       double change) {
     return resolver.successfulAction(firstDiagnosis, secondDiagnosis, change);
   }
 
   @SuppressWarnings("unchecked")
-  public <T extends Bottleneck> boolean isBlackListedAction(TopologyAPI.Topology topology,
-                                                            String action,
-                                                            Diagnosis<T> diagnosis,
-                                                            IDetector<T> detector) {
+  public <T extends Symptom> boolean isBlackListedAction(TopologyAPI.Topology topology,
+                                                         String action,
+                                                         Diagnosis<T> diagnosis,
+                                                         IDiagnoser<T> diagnoser) {
     if (blacklist.existsBlackList(topology.getName())) {
-      for (ActionEntry<? extends Bottleneck> actionEntry : blacklist.getTopologyBlackList(
+      for (ActionEntry<? extends Symptom> actionEntry : blacklist.getTopologyBlackList(
           topology.getName())) {
         if (action.equals(actionEntry.getAction()) &&
-            detector.similarDiagnosis(((ActionEntry<T>) actionEntry).getDiagnosis(), diagnosis)) {
+            diagnoser.similarDiagnosis(((ActionEntry<T>) actionEntry).getDiagnosis(), diagnosis)) {
           return true;
         }
       }

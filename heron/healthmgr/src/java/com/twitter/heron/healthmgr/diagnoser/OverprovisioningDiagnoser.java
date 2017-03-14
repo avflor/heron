@@ -11,7 +11,7 @@
 //  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //  See the License for the specific language governing permissions and
 //  limitations under the License
-package com.twitter.heron.healthmgr.detector;
+package com.twitter.heron.healthmgr.diagnoser;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,37 +20,34 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.healthmgr.services.DetectorService;
-import com.twitter.heron.healthmgr.utils.SLAManagerUtils;
-import com.twitter.heron.proto.system.PackingPlans;
+import com.twitter.heron.healthmgr.services.SymptomDetectorService;
+import com.twitter.heron.healthmgr.symptomdetector.BackPressureDetector;
+import com.twitter.heron.healthmgr.utils.HealthManagerUtils;
 import com.twitter.heron.scheduler.utils.Runtime;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
+import com.twitter.heron.spi.healthmgr.ComponentSymptom;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
-import com.twitter.heron.spi.healthmgr.IDetector;
-import com.twitter.heron.spi.healthmgr.utils.BottleneckUtils;
+import com.twitter.heron.spi.healthmgr.IDiagnoser;
 import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
 import com.twitter.heron.spi.packing.PackingPlan;
-import com.twitter.heron.spi.packing.PackingPlanProtoDeserializer;
-import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
 
-public class LowPendingPacketsDetector implements IDetector<ComponentBottleneck> {
+public class OverprovisioningDiagnoser implements IDiagnoser<ComponentSymptom> {
 
-  private static final Logger LOG = Logger.getLogger(LowPendingPacketsDetector.class.getName());
+  private static final Logger LOG = Logger.getLogger(OverprovisioningDiagnoser.class.getName());
   private static final String AVG_PENDING_PACKETS = "__connection_buffer_by_intanceid";
   private SinkVisitor visitor;
   private Config runtime;
   private int packetThreshold = 0;
   private BackPressureDetector backpressureDetector = new BackPressureDetector();
-  private DetectorService detectorService;
+  private SymptomDetectorService detectorService;
 
   @Override
   public void initialize(Config inputConfig, Config inputRuntime) {
     this.runtime = inputRuntime;
     this.visitor = Runtime.metricsReader(runtime);
     this.backpressureDetector.initialize(inputConfig, runtime);
-    detectorService = (DetectorService) Runtime
-        .getDetectorService(runtime);
+    detectorService = (SymptomDetectorService) Runtime
+        .getSymptomDetectorService(runtime);
   }
 
   public void setPacketThreshold(int noPackets){
@@ -58,30 +55,30 @@ public class LowPendingPacketsDetector implements IDetector<ComponentBottleneck>
   }
 
   @Override
-  public Diagnosis<ComponentBottleneck> detect(TopologyAPI.Topology topology)
+  public Diagnosis<ComponentSymptom> diagnose(TopologyAPI.Topology topology)
       throws RuntimeException {
 
-    Diagnosis<ComponentBottleneck> backPressuredDiagnosis =
+    Set<ComponentSymptom> backPressuredSymptom =
         detectorService.run(backpressureDetector, topology);
-    if(backPressuredDiagnosis.getSummary().size() == 0) {
+    if(backPressuredSymptom.size() == 0) {
       LOG.info("Executing: " + this.getClass().getName());
       PackingPlan packingPlan = Runtime.packingPlan(runtime);
-      HashMap<String, ComponentBottleneck> results = SLAManagerUtils.retrieveMetricValues(
+      HashMap<String, ComponentSymptom> results = HealthManagerUtils.retrieveMetricValues(
           AVG_PENDING_PACKETS, "packets", "__stmgr__", this.visitor, packingPlan);
 
       List<TopologyAPI.Spout> spouts = topology.getSpoutsList();
 
-      Set<ComponentBottleneck> bottlenecks = new HashSet<ComponentBottleneck>();
-      for (ComponentBottleneck bottleneck : results.values()) {
-        //System.out.println(bottleneck.toString()) ;
-        int position = contains(spouts, bottleneck.getComponentName());
+      Set<ComponentSymptom> symptoms = new HashSet<ComponentSymptom>();
+      for (ComponentSymptom symptom : results.values()) {
+        System.out.println(symptom.toString()) ;
+        int position = contains(spouts, symptom.getComponentName());
         if (position == -1 &&
-            bottleneck.containsBelow(AVG_PENDING_PACKETS, String.valueOf(packetThreshold))) {
-          //System.out.println("bottleneck name " + bottleneck.getComponentName().toString());
-          bottlenecks.add(bottleneck);
+            symptom.containsBelow(AVG_PENDING_PACKETS, String.valueOf(packetThreshold))) {
+          //System.out.println("symptom name " + symptom.getComponentName().toString());
+          symptoms.add(symptom);
         }
       }
-      return new Diagnosis<ComponentBottleneck>(bottlenecks);
+      return new Diagnosis<ComponentSymptom>(symptoms);
     }
     return null;
   }
@@ -97,8 +94,8 @@ public class LowPendingPacketsDetector implements IDetector<ComponentBottleneck>
   }
 
   @Override
-  public boolean similarDiagnosis(Diagnosis<ComponentBottleneck> firstDiagnosis,
-                                  Diagnosis<ComponentBottleneck> secondDiagnosis){
+  public boolean similarDiagnosis(Diagnosis<ComponentSymptom> firstDiagnosis,
+                                  Diagnosis<ComponentSymptom> secondDiagnosis){
     return false;
   }
 

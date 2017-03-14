@@ -14,25 +14,12 @@
 
 package com.twitter.heron.healthmgr.policy;
 
-import java.util.concurrent.TimeUnit;
-
 import org.junit.Before;
 import org.junit.Test;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.common.basics.ByteAmount;
-import com.twitter.heron.healthmgr.services.DetectorService;
-import com.twitter.heron.healthmgr.services.ResolverService;
-import com.twitter.heron.healthmgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.healthmgr.utils.TestUtils;
-import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
-import com.twitter.heron.scheduler.client.ISchedulerClient;
-import com.twitter.heron.scheduler.client.SchedulerClientFactory;
-import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.common.Key;
 import com.twitter.heron.spi.statemgr.IStateManager;
-import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
-import com.twitter.heron.statemgr.localfs.LocalFileSystemStateManager;
 
 
 public class ThroughputSLAPolicyTest {
@@ -51,7 +38,7 @@ public class ThroughputSLAPolicyTest {
   @Test
   public void testPolicy() throws InterruptedException {
 
-    DetectorService ds = new DetectorService();
+    /*DetectorService ds = new DetectorService();
     ResolverService rs = new ResolverService();
     Config config = Config.newBuilder()
         .put(Key.REPACKING_CLASS, ResourceCompliantRRPacking.class.getName())
@@ -100,7 +87,7 @@ public class ThroughputSLAPolicyTest {
     policy.execute();
 
     //TimeUnit.MINUTES.sleep(2);
-    policy.evaluate();
+    policy.evaluate();*/
 
   }
 }

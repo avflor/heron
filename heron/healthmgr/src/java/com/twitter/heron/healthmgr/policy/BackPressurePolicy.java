@@ -17,45 +17,45 @@ package com.twitter.heron.healthmgr.policy;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.healthmgr.actionlog.ActionEntry;
-import com.twitter.heron.healthmgr.detector.DataSkewDetector;
-import com.twitter.heron.healthmgr.detector.LimitedParallelismDetector;
-import com.twitter.heron.healthmgr.detector.SlowInstanceDetector;
+import com.twitter.heron.healthmgr.diagnoser.DataSkewDiagnoser;
+import com.twitter.heron.healthmgr.diagnoser.SlowInstanceDiagnoser;
+import com.twitter.heron.healthmgr.diagnoser.UnderProvisioningDiagnoser;
 import com.twitter.heron.healthmgr.resolver.ScaleUpResolver;
-import com.twitter.heron.healthmgr.services.DetectorService;
+import com.twitter.heron.healthmgr.services.DiagnoserService;
 import com.twitter.heron.healthmgr.services.ResolverService;
 import com.twitter.heron.scheduler.utils.Runtime;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.healthmgr.Bottleneck;
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
+import com.twitter.heron.spi.healthmgr.ComponentSymptom;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
 import com.twitter.heron.spi.healthmgr.HealthPolicy;
-import com.twitter.heron.spi.healthmgr.IDetector;
+import com.twitter.heron.spi.healthmgr.IDiagnoser;
 import com.twitter.heron.spi.healthmgr.IResolver;
+import com.twitter.heron.spi.healthmgr.Symptom;
 
 
 public class BackPressurePolicy implements HealthPolicy {
 
-  private LimitedParallelismDetector limitedParallelismDetector = new LimitedParallelismDetector();
-  private DataSkewDetector dataSkewDetector = new DataSkewDetector();
-  private SlowInstanceDetector slowInstanceDetector = new SlowInstanceDetector();
+  private UnderProvisioningDiagnoser underProvisioningDiagnoser = new UnderProvisioningDiagnoser();
+  private DataSkewDiagnoser dataSkewDiagnoser = new DataSkewDiagnoser();
+  private SlowInstanceDiagnoser slowInstanceDiagnoser = new SlowInstanceDiagnoser();
 
   private ScaleUpResolver scaleUpResolver = new ScaleUpResolver();
   private TopologyAPI.Topology topology;
 
-  private DetectorService detectorService;
+  private DiagnoserService diagnoserService;
   private ResolverService resolverService;
 
   @Override
   public void initialize(Config conf, Config runtime) {
     this.topology = Runtime.topology(runtime);
 
-    limitedParallelismDetector.initialize(conf, runtime);
-    dataSkewDetector.initialize(conf, runtime);
-    slowInstanceDetector.initialize(conf, runtime);
+    underProvisioningDiagnoser.initialize(conf, runtime);
+    dataSkewDiagnoser.initialize(conf, runtime);
+    slowInstanceDiagnoser.initialize(conf, runtime);
 
     scaleUpResolver.initialize(conf, runtime);
-    detectorService = (DetectorService) Runtime
-        .getDetectorService(runtime);
+    diagnoserService = (DiagnoserService) Runtime
+        .getDiagnoserService(runtime);
     resolverService = (ResolverService) Runtime
         .getResolverService(runtime);
   }
@@ -63,31 +63,31 @@ public class BackPressurePolicy implements HealthPolicy {
   @Override
   public void execute() {
 
-    Diagnosis<ComponentBottleneck> slowInstanceDiagnosis =
-        detectorService.run(slowInstanceDetector, topology);
+    Diagnosis<ComponentSymptom> slowInstanceDiagnosis =
+        diagnoserService.run(slowInstanceDiagnoser, topology);
 
     if (slowInstanceDiagnosis != null) {
       if (!resolverService.isBlackListedAction(topology, "SLOW_INSTANCE_RESOLVER",
-          slowInstanceDiagnosis, slowInstanceDetector)) {
+          slowInstanceDiagnosis, slowInstanceDiagnoser)) {
       }
     }
 
-    Diagnosis<ComponentBottleneck> dataSkewDiagnosis =
-        detectorService.run(dataSkewDetector, topology);
+    Diagnosis<ComponentSymptom> dataSkewDiagnosis =
+        diagnoserService.run(dataSkewDiagnoser, topology);
 
     if (dataSkewDiagnosis != null) {
       if (!resolverService.isBlackListedAction(topology, "DATA_SKEW_RESOLVER",
-          dataSkewDiagnosis, dataSkewDetector)) {
+          dataSkewDiagnosis, dataSkewDiagnoser)) {
 
       }
     }
 
-    Diagnosis<ComponentBottleneck> limitedParallelismDiagnosis =
-        detectorService.run(limitedParallelismDetector, topology);
+    Diagnosis<ComponentSymptom> limitedParallelismDiagnosis =
+        diagnoserService.run(underProvisioningDiagnoser, topology);
 
     if (limitedParallelismDiagnosis != null) {
       if (!resolverService.isBlackListedAction(topology, "SCALE_UP_RESOLVER",
-          limitedParallelismDiagnosis, limitedParallelismDetector)) {
+          limitedParallelismDiagnosis, underProvisioningDiagnoser)) {
         double outcomeImprovement = resolverService.estimateResolverOutcome(scaleUpResolver,
             topology, limitedParallelismDiagnosis);
         resolverService.run(scaleUpResolver, topology, "SCALE_UP_RESOLVER",
@@ -98,20 +98,20 @@ public class BackPressurePolicy implements HealthPolicy {
 
   @Override
   public void evaluate() {
-    ActionEntry<? extends Bottleneck> lastAction = resolverService.getLog()
+    ActionEntry<? extends Symptom> lastAction = resolverService.getLog()
         .getLastAction(topology.getName());
     System.out.println("last action " + lastAction);
-    if(lastAction != null) {
+    if (lastAction != null) {
       switch (lastAction.getAction()) {
         case "DATA_SKEW_RESOLVER": {
-          evaluateAction(dataSkewDetector, null, lastAction);
+          evaluateAction(dataSkewDiagnoser, null, lastAction);
           break;
         }
         case "SLOW_INSTANCE_RESOLVER":
-          evaluateAction(slowInstanceDetector, null, lastAction);
+          evaluateAction(slowInstanceDiagnoser, null, lastAction);
           break;
         case "SCALE_UP_RESOLVER":
-          evaluateAction(limitedParallelismDetector, scaleUpResolver, lastAction);
+          evaluateAction(underProvisioningDiagnoser, scaleUpResolver, lastAction);
           break;
         default:
           break;
@@ -120,13 +120,13 @@ public class BackPressurePolicy implements HealthPolicy {
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends Bottleneck> void evaluateAction(IDetector<T> detector, IResolver<T> resolver,
-                                                     ActionEntry<? extends Bottleneck> lastAction) {
+  private <T extends Symptom> void evaluateAction(IDiagnoser<T> diagnoser, IResolver<T> resolver,
+                                                  ActionEntry<? extends Symptom> lastAction) {
     Boolean success = true;
-    Diagnosis<? extends Bottleneck> newDiagnosis;
-    newDiagnosis = detectorService.run(detector, topology);
+    Diagnosis<? extends Symptom> newDiagnosis;
+    newDiagnosis = diagnoserService.run(diagnoser, topology);
     if (newDiagnosis != null) {
-      success = resolverService.isSuccesfulAction(resolver,
+      success = resolverService.isSuccessfulAction(resolver,
           ((ActionEntry<T>) lastAction).getDiagnosis(), (Diagnosis<T>) newDiagnosis,
           ((ActionEntry<T>) lastAction).getChange());
       System.out.println("evaluating" + success);
@@ -140,9 +140,9 @@ public class BackPressurePolicy implements HealthPolicy {
 
   @Override
   public void close() {
-    limitedParallelismDetector.close();
-    dataSkewDetector.close();
-    slowInstanceDetector.close();
+    underProvisioningDiagnoser.close();
+    dataSkewDiagnoser.close();
+    slowInstanceDiagnoser.close();
     scaleUpResolver.close();
   }
 }

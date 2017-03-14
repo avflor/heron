@@ -13,30 +13,31 @@
 // limitations under the License.
 package com.twitter.heron.healthmgr.services;
 
+import java.util.Set;
+
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.healthmgr.Bottleneck;
-import com.twitter.heron.spi.healthmgr.Diagnosis;
-import com.twitter.heron.spi.healthmgr.IDetector;
+import com.twitter.heron.spi.healthmgr.ISymptomDetector;
+import com.twitter.heron.spi.healthmgr.Symptom;
 
-public class DetectorService {
+public class SymptomDetectorService {
 
-  public DetectorService() {
+  public SymptomDetectorService() {
   }
 
   public void initialize(Config config, Config runtime) {
   }
 
-  public <T extends Bottleneck> Diagnosis<T> run(IDetector<T> detector,
-                                                 TopologyAPI.Topology topology) {
+  public <T extends Symptom> Set<T> run(ISymptomDetector<T> detector,
+                                        TopologyAPI.Topology topology) {
     return detector.detect(topology);
   }
 
-  public <T extends Bottleneck> boolean similarDiagnosis(IDetector<T> detector,
+  /*public <T extends Bottleneck> boolean similarDiagnosis(IDetector<T> detector,
                                                          Diagnosis<T> firstDiagnosis,
                                                          Diagnosis<T> secondDiagnosis) {
     return detector.similarDiagnosis(firstDiagnosis, secondDiagnosis);
-  }
+  }*/
 
 
   public void close() {

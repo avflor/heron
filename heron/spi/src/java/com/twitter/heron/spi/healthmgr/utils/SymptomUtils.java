@@ -17,37 +17,37 @@ package com.twitter.heron.spi.healthmgr.utils;
 
 import java.util.Set;
 
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
+import com.twitter.heron.spi.healthmgr.ComponentSymptom;
 
-public final class BottleneckUtils {
+public final class SymptomUtils {
 
-  private BottleneckUtils() {
+  private SymptomUtils() {
   }
 
-  public static ComponentBottleneck getComponentBottleneck(Set<ComponentBottleneck> summary,
+  public static ComponentSymptom getComponentSymptom(Set<ComponentSymptom> summary,
                                                            String component) {
-    for (ComponentBottleneck bottleneck : summary) {
-      if (bottleneck.getComponentName().equals(component)) {
-        return bottleneck;
+    for (ComponentSymptom symptom : summary) {
+      if (symptom.getComponentName().equals(component)) {
+        return symptom;
       }
     }
     return null;
   }
 
-  public static void merge(Set<ComponentBottleneck> firstSummary,
-                           Set<ComponentBottleneck> secondSummary) {
-    for (ComponentBottleneck firstBottleneck : firstSummary) {
-      for (ComponentBottleneck secondBottleneck : secondSummary) {
-        if (firstBottleneck.getComponentName().equals(secondBottleneck.getComponentName())) {
-          firstBottleneck.merge(secondBottleneck);
+  public static void merge(Set<ComponentSymptom> firstSummary,
+                           Set<ComponentSymptom> secondSummary) {
+    for (ComponentSymptom firstSymptom : firstSummary) {
+      for (ComponentSymptom secondSymptom : secondSummary) {
+        if (firstSymptom.getComponentName().equals(secondSymptom.getComponentName())) {
+          firstSymptom.merge(secondSymptom);
         }
       }
     }
   }
 
-  public static int computeSum(ComponentBottleneck bottleneck, String metricName) {
+  public static int computeSum(ComponentSymptom symptom, String metricName) {
     int sum = 0;
-    Double[] data = bottleneck.getDataPoints(metricName);
+    Double[] data = symptom.getDataPoints(metricName);
     for (int i = 0; i < data.length; i++) {
       sum += data[i];
     }

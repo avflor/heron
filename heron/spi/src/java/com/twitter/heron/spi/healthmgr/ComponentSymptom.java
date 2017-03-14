@@ -21,25 +21,25 @@ import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
 import com.twitter.heron.spi.packing.InstanceId;
 import com.twitter.heron.spi.packing.PackingPlan.InstancePlan;
 
-public class ComponentBottleneck extends Bottleneck {
+public class ComponentSymptom extends Symptom {
   private String componentName;
-  private ArrayList<InstanceBottleneck> instances;
+  private ArrayList<InstanceSymptom> instances;
 
-  public ComponentBottleneck(String componentName) {
+  public ComponentSymptom(String componentName) {
     this.componentName = componentName;
     this.instances = new ArrayList<>();
   }
 
   public void add(int containerId, InstancePlan instance, Set<MetricsInfo> metrics) {
-    instances.add(new InstanceBottleneck(containerId, instance, metrics));
+    instances.add(new InstanceSymptom(containerId, instance, metrics));
   }
 
 
-  public void merge(ComponentBottleneck bottleneck) {
-    for (InstanceBottleneck instanceBottleneck : instances) {
-      for (InstanceBottleneck newInstanceBottleneck : bottleneck.getInstances()) {
-        InstanceInfo currentData = instanceBottleneck.getInstanceData();
-        InstanceInfo newData = newInstanceBottleneck.getInstanceData();
+  public void merge(ComponentSymptom symptom) {
+    for (InstanceSymptom InstanceSymptom : instances) {
+      for (InstanceSymptom newInstanceSymptom : symptom.getInstances()) {
+        InstanceInfo currentData = InstanceSymptom.getInstanceData();
+        InstanceInfo newData = newInstanceSymptom.getInstanceData();
         if (currentData.getInstanceId() == newData.getInstanceId()
             && currentData.getContainerId() == currentData.getContainerId()) {
           currentData.updateMetrics(newData.getMetrics());
@@ -56,13 +56,13 @@ public class ComponentBottleneck extends Bottleneck {
     return componentName;
   }
 
-  public ArrayList<InstanceBottleneck> getInstances() {
+  public ArrayList<InstanceSymptom> getInstances() {
     return instances;
   }
 
   public boolean contains(String metric, String value) {
-    for (InstanceBottleneck instanceBottleneck : instances) {
-      if (instanceBottleneck.contains(metric, value)) {
+    for (InstanceSymptom InstanceSymptom : instances) {
+      if (InstanceSymptom.contains(metric, value)) {
         return true;
       }
     }
@@ -71,8 +71,8 @@ public class ComponentBottleneck extends Bottleneck {
 
   public boolean containsBelow(String metric, String value){
     int count = 0;
-    for (InstanceBottleneck instanceBottleneck : instances) {
-      if (instanceBottleneck.containsBelow(metric, value)) {
+    for (InstanceSymptom InstanceSymptom : instances) {
+      if (InstanceSymptom.containsBelow(metric, value)) {
         count++;
       }
     }
@@ -84,8 +84,8 @@ public class ComponentBottleneck extends Bottleneck {
 
   public boolean containsNonZero(String metric) {
     int count = 0;
-    for (InstanceBottleneck instanceBottleneck : instances) {
-      if (instanceBottleneck.contains(metric, "0")) {
+    for (InstanceSymptom InstanceSymptom : instances) {
+      if (InstanceSymptom.contains(metric, "0")) {
         count++;
       }
     }

@@ -21,8 +21,9 @@ import org.junit.Test;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.common.basics.ByteAmount;
-import com.twitter.heron.healthmgr.services.DetectorService;
+import com.twitter.heron.healthmgr.services.DiagnoserService;
 import com.twitter.heron.healthmgr.services.ResolverService;
+import com.twitter.heron.healthmgr.services.SymptomDetectorService;
 import com.twitter.heron.healthmgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.healthmgr.utils.TestUtils;
 import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
@@ -53,7 +54,8 @@ public class ScaleDownPolicyTest {
   @Test
   public void testPolicy() throws InterruptedException {
 
-    DetectorService ds = new DetectorService();
+    SymptomDetectorService sd = new SymptomDetectorService();
+    DiagnoserService ds = new DiagnoserService();
     ResolverService rs = new ResolverService();
     Config config = Config.newBuilder()
         .put(Key.REPACKING_CLASS, ResourceCompliantRRPacking.class.getName())
@@ -81,7 +83,8 @@ public class ScaleDownPolicyTest {
         .put(Key.SCHEDULER_STATE_MANAGER_ADAPTOR, adaptor)
         .put(Key.TOPOLOGY_NAME, "ex")
         .put(Key.TRACKER_URL, "http://localhost:8888")
-        .put(Key.HEALTH_MGR_DETECTOR_SERVICE, ds)
+        .put(Key.HEALTH_MGR_SYMPTOM_DETECTOR_SERVICE, sd)
+        .put(Key.HEALTH_MGR_DIAGNOSER_SERVICE, ds)
         .put(Key.HEALTH_MGR_RESOLVER_SERVICE, rs)
         .put(Key.PACKING_PLAN, packingPlan)
         .build();

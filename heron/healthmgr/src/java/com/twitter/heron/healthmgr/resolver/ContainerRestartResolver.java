@@ -19,19 +19,16 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.classification.InterfaceAudience;
-import com.twitter.heron.healthmgr.utils.SLAManagerUtils;
 import com.twitter.heron.proto.scheduler.Scheduler;
 import com.twitter.heron.scheduler.TopologyRuntimeManagementException;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
 import com.twitter.heron.scheduler.utils.Runtime;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
 import com.twitter.heron.spi.healthmgr.IResolver;
-import com.twitter.heron.spi.healthmgr.InstanceBottleneck;
+import com.twitter.heron.spi.healthmgr.InstanceSymptom;
 
-public class ContainerRestartResolver implements IResolver<InstanceBottleneck> {
+public class ContainerRestartResolver implements IResolver<InstanceSymptom> {
   private static final Logger LOG = Logger.getLogger(ContainerRestartResolver.class.getName());
   private Config runtime;
   private ISchedulerClient schedulerClient;
@@ -45,15 +42,15 @@ public class ContainerRestartResolver implements IResolver<InstanceBottleneck> {
   }
 
   @Override
-  public Boolean resolve(Diagnosis<InstanceBottleneck> diagnosis, TopologyAPI.Topology topology) {
+  public Boolean resolve(Diagnosis<InstanceSymptom> diagnosis, TopologyAPI.Topology topology) {
     if (diagnosis.getSummary() == null) {
       throw new RuntimeException("Not valid diagnosis object");
     }
 
     // unique set of containers to be restarted
     Set<Integer> containerIds = new HashSet<>();
-    for (InstanceBottleneck bottleneck : diagnosis.getSummary()) {
-      containerIds.add(bottleneck.getInstanceData().getContainerId());
+    for (InstanceSymptom symptom : diagnosis.getSummary()) {
+      containerIds.add(symptom.getInstanceData().getContainerId());
     }
 
     String topologyName = topology.getName();
@@ -83,8 +80,8 @@ public class ContainerRestartResolver implements IResolver<InstanceBottleneck> {
    * Called to compute the expected outcome of the resolver given a diagnosis
    */
   @Override
-  public double estimateOutcome(Diagnosis<InstanceBottleneck> diagnosis,
-                                TopologyAPI.Topology topology){
+  public double estimateOutcome(Diagnosis<InstanceSymptom> diagnosis,
+                                TopologyAPI.Topology topology) {
     return 0;
   }
 
@@ -94,9 +91,9 @@ public class ContainerRestartResolver implements IResolver<InstanceBottleneck> {
    * by resolving the oldDiagnosis
    */
   @Override
-  public boolean successfulAction(Diagnosis<InstanceBottleneck> oldDiagnosis,
-                                  Diagnosis<InstanceBottleneck> newDiagnosis,
-                           double improvement){
+  public boolean successfulAction(Diagnosis<InstanceSymptom> oldDiagnosis,
+                                  Diagnosis<InstanceSymptom> newDiagnosis,
+                                  double improvement) {
     return true;
   }
 

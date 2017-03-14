@@ -17,20 +17,20 @@ package com.twitter.heron.healthmgr.actionlog;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import com.twitter.heron.spi.healthmgr.Bottleneck;
+import com.twitter.heron.spi.healthmgr.Symptom;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
 
 public class ActionBlackList {
-  HashMap<String, ArrayList<ActionEntry<? extends Bottleneck>>> blackListedActions;
+  HashMap<String, ArrayList<ActionEntry<? extends Symptom>>> blackListedActions;
 
   public ActionBlackList(){
     blackListedActions = new HashMap<>();
   }
 
-  public <T extends Bottleneck> void addToBlackList(String topologyName, String actionTaken,
+  public <T extends Symptom> void addToBlackList(String topologyName, String actionTaken,
                                                    Diagnosis<T> data, double change){
     ActionEntry<T> action = new ActionEntry<>(actionTaken, data, change);
-    ArrayList<ActionEntry<? extends Bottleneck>> entries = this.blackListedActions.get(topologyName);
+    ArrayList<ActionEntry<? extends Symptom>> entries = this.blackListedActions.get(topologyName);
     if (entries == null) {
       entries = new ArrayList<>();
     }
@@ -39,11 +39,11 @@ public class ActionBlackList {
     System.out.println(this.blackListedActions);
   }
 
-  public HashMap<String, ArrayList<ActionEntry<? extends Bottleneck>>> getBlackList() {
+  public HashMap<String, ArrayList<ActionEntry<? extends Symptom>>> getBlackList() {
     return blackListedActions;
   }
 
-  public ArrayList<ActionEntry<? extends Bottleneck>> getTopologyBlackList(String topologyName) {
+  public ArrayList<ActionEntry<? extends Symptom>> getTopologyBlackList(String topologyName) {
     if(blackListedActions.containsKey(topologyName)) {
       return blackListedActions.get(topologyName);
     }

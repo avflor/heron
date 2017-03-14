@@ -62,8 +62,12 @@ public final class Runtime {
     return runtime.get(Key.SCHEDULER_CLIENT_INSTANCE);
   }
 
-  public static Object getDetectorService(Config runtime) {
-    return runtime.get(Key.HEALTH_MGR_DETECTOR_SERVICE);
+  public static Object getSymptomDetectorService(Config runtime) {
+    return runtime.get(Key.HEALTH_MGR_SYMPTOM_DETECTOR_SERVICE);
+  }
+
+  public static Object getDiagnoserService(Config runtime) {
+    return runtime.get(Key.HEALTH_MGR_DIAGNOSER_SERVICE);
   }
 
   public static Object getResolverService(Config runtime) {

@@ -19,16 +19,21 @@ import org.junit.Test;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.common.basics.ByteAmount;
-import com.twitter.heron.healthmgr.detector.BackPressureDetector;
+import com.twitter.heron.healthmgr.diagnoser.UnderProvisioningDiagnoser;
+import com.twitter.heron.healthmgr.services.DiagnoserService;
+import com.twitter.heron.healthmgr.services.ResolverService;
+import com.twitter.heron.healthmgr.services.SymptomDetectorService;
 import com.twitter.heron.healthmgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.healthmgr.utils.TestUtils;
 import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
+import com.twitter.heron.packing.roundrobin.RoundRobinPacking;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
 import com.twitter.heron.scheduler.client.SchedulerClientFactory;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Key;
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
+import com.twitter.heron.spi.healthmgr.ComponentSymptom;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
+import com.twitter.heron.spi.packing.PackingPlan;
 import com.twitter.heron.spi.statemgr.IStateManager;
 import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
 import com.twitter.heron.statemgr.localfs.LocalFileSystemStateManager;
@@ -47,6 +52,9 @@ public class ScaleUpResolverTest {
 
   @Test
   public void testResolver() {
+
+    ResolverService rs = new ResolverService();
+
     Config config = Config.newBuilder()
         .put(Key.REPACKING_CLASS, ResourceCompliantRRPacking.class.getName())
         .put(Key.INSTANCE_CPU, "1")
@@ -57,6 +65,7 @@ public class ScaleUpResolverTest {
         .put(Key.STATE_MANAGER_CLASS, LocalFileSystemStateManager.class.getName())
         .put(Key.TOPOLOGY_NAME, "ds")
         .put(Key.TRACKER_URL, "http://localhost:8888")
+        .put(Key.SCHEDULER_IS_SERVICE, true)
         .build();
 
     stateManager = new LocalFileSystemStateManager();
@@ -64,10 +73,15 @@ public class ScaleUpResolverTest {
     SchedulerStateManagerAdaptor adaptor =
         new SchedulerStateManagerAdaptor(stateManager, 5000);
 
+    RoundRobinPacking packing = new RoundRobinPacking();
+    packing.initialize(config, topology);
+    PackingPlan packingPlan = packing.pack();
+
     Config runtime = Config.newBuilder()
         .put(Key.SCHEDULER_STATE_MANAGER_ADAPTOR, adaptor)
         .put(Key.TOPOLOGY_NAME, "ds")
         .put(Key.TRACKER_URL, "http://localhost:8888")
+        .put(Key.PACKING_PLAN, packingPlan)
         .build();
 
     ISchedulerClient schedulerClient =
@@ -79,19 +93,27 @@ public class ScaleUpResolverTest {
         .put(Key.SCHEDULER_CLIENT_INSTANCE, schedulerClient)
         .put(Key.METRICS_READER_INSTANCE, visitor)
         .put(Key.TOPOLOGY_DEFINITION, this.topology)
+        .put(Key.TRACKER_URL, "http://localhost:8888")
+        .put(Key.METRICS_READER_INSTANCE, visitor)
+        .put(Key.HEALTH_MGR_DIAGNOSER_SERVICE, new DiagnoserService())
+        .put(Key.HEALTH_MGR_SYMPTOM_DETECTOR_SERVICE, new SymptomDetectorService())
+        .put(Key.HEALTH_MGR_RESOLVER_SERVICE, rs)
         .build();
 
     visitor.initialize(config, runtime);
 
-    BackPressureDetector detector = new BackPressureDetector();
-    detector.initialize(config, runtime);
+    UnderProvisioningDiagnoser diagnoser = new UnderProvisioningDiagnoser();
+    diagnoser.initialize(config, runtime);
 
-    Diagnosis<ComponentBottleneck> result = detector.detect(topology);
+    Diagnosis<ComponentSymptom> result = diagnoser.diagnose(topology);
     Assert.assertEquals(1, result.getSummary().size());
 
     ScaleUpResolver resolver = new ScaleUpResolver();
     resolver.initialize(config, runtime);
 
-    resolver.resolve(result, topology);
+    double outcomeImprovement = rs.estimateResolverOutcome(resolver,
+        topology, result);
+    rs.run(resolver, topology, "SCALE_UP_RESOLVER",
+        result, outcomeImprovement);
   }
 }

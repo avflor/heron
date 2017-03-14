@@ -12,39 +12,41 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License
 
-package com.twitter.heron.healthmgr.detector;
+package com.twitter.heron.healthmgr.symptomdetector;
+
+import java.util.Set;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.common.basics.ByteAmount;
-import com.twitter.heron.healthmgr.services.DetectorService;
 import com.twitter.heron.healthmgr.sinkvisitor.TrackerVisitor;
-import com.twitter.heron.healthmgr.utils.TestUtils;
 import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
 import com.twitter.heron.packing.roundrobin.RoundRobinPacking;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Key;
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
-import com.twitter.heron.spi.healthmgr.Diagnosis;
+import com.twitter.heron.spi.healthmgr.ComponentSymptom;
 import com.twitter.heron.spi.packing.PackingPlan;
+import com.twitter.heron.spi.utils.TopologyTests;
 
+public class ProcessingSkewDetectorTest {
 
-public class LowPendingPacketsDetectorTest {
-  private Config config;
-  private Config runtime;
+  private static final String BOLT_NAME = "exclaim1";
+  private static final String SPOUT_NAME = "word";
 
-  private TopologyAPI.Topology topology;
+  private TopologyAPI.Topology getTopology(
+      int spoutParallelism, int boltParallelism,
+      com.twitter.heron.api.Config topologyConfig) {
+    return TopologyTests.createTopology("ds", topologyConfig, SPOUT_NAME,
+        BOLT_NAME, spoutParallelism, boltParallelism);
+  }
 
-  /**
-   * Basic setup before executing a test case
-   */
-  @Before
-  public void setUp() throws Exception {
-    this.topology = TestUtils.getTopology("ex");
-    config = Config.newBuilder()
+  @Test
+  public void testDetector() {
+
+    TopologyAPI.Topology topology = getTopology(2, 2, new com.twitter.heron.api.Config());
+    Config config = Config.newBuilder()
         .put(Key.REPACKING_CLASS, ResourceCompliantRRPacking.class.getName())
         .put(Key.INSTANCE_CPU, "1")
         .put(Key.INSTANCE_RAM, ByteAmount.fromMegabytes(192).asBytes())
@@ -59,26 +61,19 @@ public class LowPendingPacketsDetectorTest {
 
 
     TrackerVisitor visitor = new TrackerVisitor();
-    runtime = Config.newBuilder()
+    Config runtime = Config.newBuilder()
         .put(Key.TOPOLOGY_DEFINITION, topology)
         .put(Key.TRACKER_URL, "http://localhost:8888")
         .put(Key.PACKING_PLAN, packingPlan)
         .put(Key.METRICS_READER_INSTANCE, visitor)
-        .put(Key.HEALTH_MGR_DETECTOR_SERVICE, new DetectorService())
         .build();
-    visitor.initialize(config, runtime);
-  }
 
-  @Test
-  public void testDetector() {
-
-    TrackerVisitor visitor = new TrackerVisitor();
     visitor.initialize(config, runtime);
 
-    LowPendingPacketsDetector detector = new LowPendingPacketsDetector();
+    SkewDetector detector = new SkewDetector("__execute-count/default", 0);
     detector.initialize(config, runtime);
-    detector.setPacketThreshold(500);
-    Diagnosis<ComponentBottleneck> result = detector.detect(topology);
-    Assert.assertEquals(1, result.getSummary().size());
+
+    Set<ComponentSymptom> result = detector.detect(topology);
+    Assert.assertEquals(1, result.size());
   }
 }

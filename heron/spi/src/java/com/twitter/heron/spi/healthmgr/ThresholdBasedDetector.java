@@ -14,7 +14,7 @@
 package com.twitter.heron.spi.healthmgr;
 
 
-public abstract class ThresholdBasedDetector<T extends Bottleneck> implements IDetector<T> {
+public abstract class ThresholdBasedDetector<T extends Symptom> implements ISymptomDetector<T> {
   private double threshold;
 
   public ThresholdBasedDetector(double threshold) {

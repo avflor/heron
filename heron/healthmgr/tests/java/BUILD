@@ -57,10 +57,10 @@ java_library(
 
 java_tests(
    test_classes = [
-       "com.twitter.heron.healthmgr.detector.BackPressureDetectorTest",
-       "com.twitter.heron.healthmgr.detector.LowPendingPacketsDetectorTest",
+       "com.twitter.heron.healthmgr.symptomdetector.BackPressureDetectorTest",
+       "com.twitter.heron.healthmgr.diagnoser.OverProvisioningDiagnoserTest",
        "com.twitter.heron.healthmgr.resolver.ScaleUpResolverTest",
-       "com.twitter.heron.healthmgr.detector.ProcessingSkewDetectorTest",
+       "com.twitter.heron.healthmgr.symptomdetector.ProcessingSkewDetectorTest",
        "com.twitter.heron.healthmgr.policy.BackPressurePolicyTest",
        "com.twitter.heron.healthmgr.policy.ThroughputSLAPolicyTest",
        "com.twitter.heron.healthmgr.policy.ScaleDownPolicyTest",
