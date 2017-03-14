@@ -35,8 +35,9 @@ import org.apache.commons.cli.ParseException;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.common.utils.logging.LoggingHelper;
-import com.twitter.heron.healthmgr.services.DetectorService;
+import com.twitter.heron.healthmgr.services.DiagnoserService;
 import com.twitter.heron.healthmgr.services.ResolverService;
+import com.twitter.heron.healthmgr.services.SymptomDetectorService;
 import com.twitter.heron.healthmgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
 import com.twitter.heron.scheduler.client.SchedulerClientFactory;
@@ -57,11 +58,12 @@ import com.twitter.heron.spi.utils.ReflectionUtils;
 public class HealthManager {
   private static final Logger LOG = Logger.getLogger(HealthManager.class.getName());
   private final Config config;
+  private final SymptomDetectorService symptomDetectorService = new SymptomDetectorService();
+  private final DiagnoserService diagnoserService = new DiagnoserService();
+  private final ResolverService resolverService = new ResolverService();
   private Config runtime;
   private ScheduledExecutorService executor;
   private List<String> healthPolicies;
-  private final DetectorService detectorService = new DetectorService();
-  private final ResolverService resolverService = new ResolverService();
 
   public HealthManager(Config config, Config runtime) {
     this.config = config;
@@ -268,7 +270,8 @@ public class HealthManager {
         .put(Key.TOPOLOGY_DEFINITION, topology)
         .put(Key.SCHEDULER_STATE_MANAGER_ADAPTOR, adaptor)
         .put(Key.METRICS_READER_INSTANCE, sinkVisitor)
-        .put(Key.HEALTH_MGR_DETECTOR_SERVICE, detectorService)
+        .put(Key.HEALTH_MGR_SYMPTOM_DETECTOR_SERVICE, symptomDetectorService)
+        .put(Key.HEALTH_MGR_DIAGNOSER_SERVICE, diagnoserService)
         .put(Key.HEALTH_MGR_RESOLVER_SERVICE, resolverService)
         .build();
 
@@ -283,7 +286,8 @@ public class HealthManager {
     // TODO rename sinkvisitor
     sinkVisitor.initialize(config, runtime);
 
-    detectorService.initialize(config, runtime);
+    symptomDetectorService.initialize(config, runtime);
+    diagnoserService.initialize(config, runtime);
     resolverService.initialize(config, runtime);
 
     healthPolicies = Context.healthPolicies(config);

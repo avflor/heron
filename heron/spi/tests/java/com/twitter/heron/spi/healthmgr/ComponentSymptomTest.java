@@ -25,18 +25,18 @@ import com.twitter.heron.spi.packing.InstanceId;
 import com.twitter.heron.spi.packing.PackingPlan.InstancePlan;
 
 
-public class ComponentBottleneckTest {
+public class ComponentSymptomTest {
 
   @Test
-  public void testComponentBottleneckEquals() {
-    ComponentBottleneck bottleneck = new ComponentBottleneck("component");
+  public void testComponentSymptomEquals() {
+    ComponentSymptom symptom = new ComponentSymptom("component");
     Set<MetricsInfo> metrics = new HashSet<MetricsInfo>();
     metrics.add(new MetricsInfo("testMetric1", "1"));
     metrics.add(new MetricsInfo("testMetric2", "2"));
 
-    bottleneck.add(1, new InstancePlan(new InstanceId("name", 1, 0), null), metrics);
-    bottleneck.add(1, new InstancePlan(new InstanceId("name", 2, 0), null), metrics);
-    Assert.assertEquals(bottleneck.contains("testMetric1", "1"), true);
-    Assert.assertEquals(bottleneck.contains("testMetric1", "0"), false);
+    symptom.add(1, new InstancePlan(new InstanceId("name", 1, 0), null), metrics);
+    symptom.add(1, new InstancePlan(new InstanceId("name", 2, 0), null), metrics);
+    Assert.assertEquals(symptom.contains("testMetric1", "1"), true);
+    Assert.assertEquals(symptom.contains("testMetric1", "0"), false);
   }
 }

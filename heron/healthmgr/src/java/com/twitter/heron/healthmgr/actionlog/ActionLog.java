@@ -19,19 +19,19 @@ import java.util.HashMap;
 
 import com.google.common.base.Optional;
 
-import com.twitter.heron.spi.healthmgr.Bottleneck;
+import com.twitter.heron.spi.healthmgr.Symptom;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
 
 public class ActionLog {
-  HashMap<String, ArrayList<ActionEntry<? extends Bottleneck>>> log;
+  HashMap<String, ArrayList<ActionEntry<? extends Symptom>>> log;
 
   public ActionLog() {
     this.log = new HashMap<>();
   }
 
-  private <T extends Bottleneck> void addTopologyEntry(String topologyName,
+  private <T extends Symptom> void addTopologyEntry(String topologyName,
                                                        ActionEntry<T> action) {
-    ArrayList<ActionEntry<? extends Bottleneck>> topologyLog = this.log.get(topologyName);
+    ArrayList<ActionEntry<? extends Symptom>> topologyLog = this.log.get(topologyName);
     if (topologyLog == null) {
       topologyLog = new ArrayList<>();
     }
@@ -40,24 +40,24 @@ public class ActionLog {
     System.out.println(this.log);
   }
 
-  public <T extends Bottleneck> void addAction(String topologyName, String problem,
+  public <T extends Symptom> void addAction(String topologyName, String problem,
                                                Diagnosis<T> diagnosis, double change) {
     ActionEntry<T> action = new ActionEntry<T>(problem, diagnosis, change);
     addTopologyEntry(topologyName, action);
   }
 
-  public ActionEntry<? extends Bottleneck> getLastAction(String topologyName) {
-    ArrayList<ActionEntry<? extends Bottleneck>> topologyLog = this.log.get(topologyName);
+  public ActionEntry<? extends Symptom> getLastAction(String topologyName) {
+    ArrayList<ActionEntry<? extends Symptom>> topologyLog = this.log.get(topologyName);
     if (topologyLog == null) {
       return null;
     } else {
-      ActionEntry<? extends Bottleneck> entry = topologyLog.get(topologyLog.size() - 1);
+      ActionEntry<? extends Symptom> entry = topologyLog.get(topologyLog.size() - 1);
       return entry;
     }
   }
 
-  public Optional<ArrayList<ActionEntry<? extends Bottleneck>>> getAllActions(String topologyName) {
-    ArrayList<ActionEntry<? extends Bottleneck>> topologyLog = this.log.get(topologyName);
+  public Optional<ArrayList<ActionEntry<? extends Symptom>>> getAllActions(String topologyName) {
+    ArrayList<ActionEntry<? extends Symptom>> topologyLog = this.log.get(topologyName);
     if (topologyLog == null) {
       return Optional.absent();
     } else {

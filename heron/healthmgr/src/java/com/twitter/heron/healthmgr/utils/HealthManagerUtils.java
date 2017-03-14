@@ -19,28 +19,28 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
-import com.twitter.heron.spi.healthmgr.InstanceBottleneck;
+import com.twitter.heron.spi.healthmgr.ComponentSymptom;
+import com.twitter.heron.spi.healthmgr.InstanceSymptom;
 import com.twitter.heron.spi.metricsmgr.metrics.MetricsInfo;
 import com.twitter.heron.spi.metricsmgr.sink.SinkVisitor;
 import com.twitter.heron.spi.packing.InstanceId;
 import com.twitter.heron.spi.packing.PackingPlan;
 import com.twitter.heron.spi.packing.PackingPlan.InstancePlan;
 
-public final class SLAManagerUtils {
+public final class HealthManagerUtils {
 
   private static final String BACKPRESSURE_METRIC = "__time_spent_back_pressure_by_compid";
 
-  private SLAManagerUtils() {
+  private HealthManagerUtils() {
 
   }
 
-  public static HashMap<String, ComponentBottleneck> retrieveMetricValues(String metricName,
+  public static HashMap<String, ComponentSymptom> retrieveMetricValues(String metricName,
                                                                           String metricExtension,
                                                                           String component,
                                                                           SinkVisitor visitor,
                                                                           PackingPlan packingPlan) {
-    HashMap<String, ComponentBottleneck> results = new HashMap<>();
+    HashMap<String, ComponentSymptom> results = new HashMap<>();
     for (PackingPlan.ContainerPlan containerPlan : packingPlan.getContainers()) {
       for (PackingPlan.InstancePlan instancePlan : containerPlan.getInstances()) {
         String metricValue = getMetricValue(metricName, metricExtension,
@@ -50,16 +50,16 @@ public final class SLAManagerUtils {
           continue;
         }
 
-        ComponentBottleneck currentBottleneck = results.get(instancePlan.getComponentName());
-        if (currentBottleneck == null) {
-          currentBottleneck = new ComponentBottleneck(instancePlan.getComponentName());
+        ComponentSymptom currentSymptom = results.get(instancePlan.getComponentName());
+        if (currentSymptom == null) {
+          currentSymptom = new ComponentSymptom(instancePlan.getComponentName());
         }
 
         Set<MetricsInfo> metrics = new HashSet<>();
         MetricsInfo metric = new MetricsInfo(metricName, metricValue);
         metrics.add(metric);
-        currentBottleneck.add(containerPlan.getId(), instancePlan, metrics);
-        results.put(instancePlan.getComponentName(), currentBottleneck);
+        currentSymptom.add(containerPlan.getId(), instancePlan, metrics);
+        results.put(instancePlan.getComponentName(), currentSymptom);
       }
     }
     return results;
@@ -94,7 +94,7 @@ public final class SLAManagerUtils {
     return metricsResults.iterator().next().getValue();
   }
 
-  public static void updateComponentBottleneck(ComponentBottleneck currentBottleneck,
+  public static void updateComponentSymptom(ComponentSymptom currentSymptom,
                                                String metricName,
                                                MetricsInfo metricsInfo) {
     String[] parts = metricsInfo.getName().split("_");
@@ -102,7 +102,7 @@ public final class SLAManagerUtils {
     metrics.add(new MetricsInfo(metricName, metricsInfo.getValue()));
     InstancePlan instance =
         new InstancePlan(new InstanceId(parts[2], Integer.parseInt(parts[3]), 0), null);
-    currentBottleneck.add(Integer.parseInt(parts[1]), instance, metrics);
+    currentSymptom.add(Integer.parseInt(parts[1]), instance, metrics);
   }
 
   public static Double[] getDoubleDataPoints(Iterable<MetricsInfo> metricsResults) {
@@ -123,9 +123,9 @@ public final class SLAManagerUtils {
    * @param second Second Component
    * @return true if the second component contains the instances of the first, false otherwise
    */
-  public static boolean containsInstanceIds(ComponentBottleneck first, ComponentBottleneck second) {
-    ArrayList<InstanceBottleneck> firstInstances = first.getInstances();
-    ArrayList<InstanceBottleneck> secondInstances = second.getInstances();
+  public static boolean containsInstanceIds(ComponentSymptom first, ComponentSymptom second) {
+    ArrayList<InstanceSymptom> firstInstances = first.getInstances();
+    ArrayList<InstanceSymptom> secondInstances = second.getInstances();
 
     for (int i = 0; i < firstInstances.size(); i++) {
       if (!containsInstanceId(secondInstances,
@@ -137,9 +137,9 @@ public final class SLAManagerUtils {
 
   }
 
-  public static boolean sameInstanceIds(ComponentBottleneck first, ComponentBottleneck second) {
-    ArrayList<InstanceBottleneck> firstInstances = first.getInstances();
-    ArrayList<InstanceBottleneck> secondInstances = second.getInstances();
+  public static boolean sameInstanceIds(ComponentSymptom first, ComponentSymptom second) {
+    ArrayList<InstanceSymptom> firstInstances = first.getInstances();
+    ArrayList<InstanceSymptom> secondInstances = second.getInstances();
 
     if (firstInstances.size() != secondInstances.size()) {
       return false;
@@ -154,7 +154,7 @@ public final class SLAManagerUtils {
     }
   }
 
-  public static boolean containsInstanceId(ArrayList<InstanceBottleneck> instances,
+  public static boolean containsInstanceId(ArrayList<InstanceSymptom> instances,
                                            int instanceId) {
     for (int i = 0; i < instances.size(); i++) {
       if (instances.get(i).getInstanceData().getInstanceId() == instanceId) {
@@ -164,18 +164,18 @@ public final class SLAManagerUtils {
     return false;
   }
 
-  public static boolean similarSumMetric(ComponentBottleneck first,
-                                         ComponentBottleneck second, String metric, int threshold) {
+  public static boolean similarSumMetric(ComponentSymptom first,
+                                         ComponentSymptom second, String metric, int threshold) {
     Double firstMetric = 0.0;
     Double secondMetric = 0.0;
     for (int j = 0; j < first.getInstances().size(); j++) {
-      InstanceBottleneck currentInstance = first.getInstances().get(j);
+      InstanceSymptom currentInstance = first.getInstances().get(j);
       firstMetric += Double.parseDouble(
           currentInstance.getInstanceData().getMetricValue(metric));
     }
 
     for (int j = 0; j < second.getInstances().size(); j++) {
-      InstanceBottleneck currentInstance = second.getInstances().get(j);
+      InstanceSymptom currentInstance = second.getInstances().get(j);
       secondMetric += Double.parseDouble(
           currentInstance.getInstanceData().getMetricValue(metric));
     }
@@ -185,20 +185,20 @@ public final class SLAManagerUtils {
     return true;
   }
 
-  public static boolean improvedMetricSum(ComponentBottleneck first,
-                                         ComponentBottleneck second, String metric,
+  public static boolean improvedMetricSum(ComponentSymptom first,
+                                         ComponentSymptom second, String metric,
                                           double improvement) {
 
     Double firstMetric = 0.0;
     Double secondMetric = 0.0;
     for (int j = 0; j < first.getInstances().size(); j++) {
-      InstanceBottleneck currentInstance = first.getInstances().get(j);
+      InstanceSymptom currentInstance = first.getInstances().get(j);
       firstMetric += Double.parseDouble(
           currentInstance.getInstanceData().getMetricValue(metric));
     }
 
     for (int j = 0; j < second.getInstances().size(); j++) {
-      InstanceBottleneck currentInstance = second.getInstances().get(j);
+      InstanceSymptom currentInstance = second.getInstances().get(j);
       secondMetric += Double.parseDouble(
           currentInstance.getInstanceData().getMetricValue(metric));
     }
@@ -210,8 +210,8 @@ public final class SLAManagerUtils {
   }
 
 
-  public static boolean similarMetric(ComponentBottleneck first,
-                                      ComponentBottleneck second, String metric, int threshold) {
+  public static boolean similarMetric(ComponentSymptom first,
+                                      ComponentSymptom second, String metric, int threshold) {
     for (int j = 0; j < first.getInstances().size(); j++) {
       int instanceId = first.getInstances().get(j).getInstanceData().getInstanceId();
       String firstValue = first.getInstances().get(j).getInstanceData()
@@ -223,11 +223,11 @@ public final class SLAManagerUtils {
     return true;
   }
 
-  private static boolean similarMetric(ArrayList<InstanceBottleneck> instances, String metric,
+  private static boolean similarMetric(ArrayList<InstanceSymptom> instances, String metric,
                                        int instanceId, String value, int threshold) {
     boolean found = false;
     for (int i = 0; i < instances.size() && !found; i++) {
-      InstanceBottleneck current = instances.get(i);
+      InstanceSymptom current = instances.get(i);
       if (current.getInstanceData().getInstanceId() == instanceId) {
         found = true;
         Double firstValue = Double.parseDouble(value);
@@ -245,7 +245,7 @@ public final class SLAManagerUtils {
    * Returns true if the instances of the first component have more backpressure than
    * the same instances of the first component.
    */
-  public static boolean reducedBackPressure(ComponentBottleneck first, ComponentBottleneck second) {
+  public static boolean reducedBackPressure(ComponentSymptom first, ComponentSymptom second) {
     for (int j = 0; j < first.getInstances().size(); j++) {
       int instanceId = first.getInstances().get(j).getInstanceData().getInstanceId();
       String backPressureValue = first.getInstances().get(j).getInstanceData()
@@ -259,7 +259,7 @@ public final class SLAManagerUtils {
     return false;
   }
 
-  public static boolean similarBackPressure(ComponentBottleneck first, ComponentBottleneck second) {
+  public static boolean similarBackPressure(ComponentSymptom first, ComponentSymptom second) {
     for (int j = 0; j < first.getInstances().size(); j++) {
       int instanceId = first.getInstances().get(j).getInstanceData().getInstanceId();
       String backPressureValue = first.getInstances().get(j).getInstanceData()
@@ -271,11 +271,11 @@ public final class SLAManagerUtils {
     return true;
   }
 
-  private static boolean similarBackPressure(ArrayList<InstanceBottleneck> instances,
+  private static boolean similarBackPressure(ArrayList<InstanceSymptom> instances,
                                              int instanceId, String backPressureValue) {
     boolean found = false;
     for (int i = 0; i < instances.size() && !found; i++) {
-      InstanceBottleneck current = instances.get(i);
+      InstanceSymptom current = instances.get(i);
       if (current.getInstanceData().getInstanceId() == instanceId) {
         found = true;
         if (Double.parseDouble(current.getInstanceData().getMetricValue(BACKPRESSURE_METRIC)) > 0

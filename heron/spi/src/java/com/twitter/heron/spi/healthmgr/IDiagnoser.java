@@ -17,7 +17,7 @@ package com.twitter.heron.spi.healthmgr;
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.spi.common.Config;
 
-public interface IDetector<T extends Bottleneck> extends AutoCloseable {
+public interface IDiagnoser<T extends Symptom> extends AutoCloseable {
 
   /**
    * Initialize the detector with the config and a sink visitor
@@ -27,7 +27,7 @@ public interface IDetector<T extends Bottleneck> extends AutoCloseable {
   /**
    * Called by detector to detect a potential problem.
    */
-  Diagnosis<T> detect(TopologyAPI.Topology topology);
+  Diagnosis<T> diagnose(TopologyAPI.Topology topology);
 
   /**
    * Called by detector to compare two Diagnosis objects.

@@ -15,20 +15,19 @@ package com.twitter.heron.healthmgr.resolver;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.common.basics.SysUtils;
-import com.twitter.heron.healthmgr.detector.BackPressureDetector;
+import com.twitter.heron.healthmgr.symptomdetector.BackPressureDetector;
 import com.twitter.heron.proto.scheduler.Scheduler;
 import com.twitter.heron.proto.system.PackingPlans;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
 import com.twitter.heron.scheduler.utils.Runtime;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Context;
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
+import com.twitter.heron.spi.healthmgr.ComponentSymptom;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
 import com.twitter.heron.spi.healthmgr.IResolver;
 import com.twitter.heron.spi.packing.IRepacking;
@@ -38,7 +37,7 @@ import com.twitter.heron.spi.packing.PackingPlanProtoSerializer;
 import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
 import com.twitter.heron.spi.utils.ReflectionUtils;
 
-public class ScaleDownResolver implements IResolver<ComponentBottleneck> {
+public class ScaleDownResolver implements IResolver<ComponentSymptom> {
 
   private static final String BACKPRESSURE_METRIC = "__time_spent_back_pressure_by_compid";
   private static final String EXECUTION_COUNT_METRIC = "__execute-count/default";
@@ -58,9 +57,9 @@ public class ScaleDownResolver implements IResolver<ComponentBottleneck> {
   }
 
   @Override
-  public Boolean resolve(Diagnosis<ComponentBottleneck> diagnosis, TopologyAPI.Topology topology) {
-    ComponentBottleneck bottleneck = diagnosis.getSummary().iterator().next();
-    String componentName = bottleneck.getComponentName();
+  public Boolean resolve(Diagnosis<ComponentSymptom> diagnosis, TopologyAPI.Topology topology) {
+    ComponentSymptom symptom = diagnosis.getSummary().iterator().next();
+    String componentName = symptom.getComponentName();
 
     String topologyName = topology.getName();
     LOG.fine(String.format("updateTopologyHandler called for %s with %s",
@@ -94,13 +93,13 @@ public class ScaleDownResolver implements IResolver<ComponentBottleneck> {
   }
 
   @Override
-  public double estimateOutcome(Diagnosis<ComponentBottleneck> diagnosis,
+  public double estimateOutcome(Diagnosis<ComponentSymptom> diagnosis,
                                 TopologyAPI.Topology topology) {
     if (diagnosis.getSummary() == null) {
       throw new RuntimeException("Not valid diagnosis object");
     }
 
-    ComponentBottleneck current = diagnosis.getSummary().iterator().next();
+    ComponentSymptom current = diagnosis.getSummary().iterator().next();
     double scaleDownFactor = computeScaleDownFactor();
     this.newParallelism = (int) Math.floor((1 - scaleDownFactor) * current.getInstances().size());
 
@@ -115,13 +114,13 @@ public class ScaleDownResolver implements IResolver<ComponentBottleneck> {
   }
 
   @Override
-  public boolean successfulAction(Diagnosis<ComponentBottleneck> oldDiagnosis,
-                                  Diagnosis<ComponentBottleneck> newDiagnosis, double improvement) {
+  public boolean successfulAction(Diagnosis<ComponentSymptom> oldDiagnosis,
+                                  Diagnosis<ComponentSymptom> newDiagnosis, double improvement) {
 
-    /*Set<ComponentBottleneck> oldSummary = oldDiagnosis.getSummary();
-    Set<ComponentBottleneck> newSummary = newDiagnosis.getSummary();
-    ComponentBottleneck oldComponent = oldSummary.iterator().next();
-    ComponentBottleneck newComponent = newSummary.iterator().next();
+    /*Set<ComponentSymptom> oldSummary = oldDiagnosis.getSummary();
+    Set<ComponentSymptom> newSummary = newDiagnosis.getSummary();
+    ComponentSymptom oldComponent = oldSummary.iterator().next();
+    ComponentSymptom newComponent = newSummary.iterator().next();
     System.out.println("old " + oldComponent.toString());
     System.out.println("new " + newComponent.toString());*/
     if (newDiagnosis == null) {

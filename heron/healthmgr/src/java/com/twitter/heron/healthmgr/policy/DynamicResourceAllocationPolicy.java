@@ -1,25 +1,25 @@
-// Copyright 2016 Twitter. All rights reserved.
+//  Copyright 2017 Twitter. All rights reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
 //
-//    http://www.apache.org/licenses/LICENSE-2.0
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License
 package com.twitter.heron.healthmgr.policy;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.healthmgr.actionlog.ActionEntry;
 import com.twitter.heron.healthmgr.diagnoser.DataSkewDiagnoser;
+import com.twitter.heron.healthmgr.diagnoser.OverprovisioningDiagnoser;
 import com.twitter.heron.healthmgr.diagnoser.SlowInstanceDiagnoser;
 import com.twitter.heron.healthmgr.diagnoser.UnderProvisioningDiagnoser;
+import com.twitter.heron.healthmgr.resolver.ScaleDownResolver;
 import com.twitter.heron.healthmgr.resolver.ScaleUpResolver;
 import com.twitter.heron.healthmgr.services.DiagnoserService;
 import com.twitter.heron.healthmgr.services.ResolverService;
@@ -32,18 +32,24 @@ import com.twitter.heron.spi.healthmgr.IDiagnoser;
 import com.twitter.heron.spi.healthmgr.IResolver;
 import com.twitter.heron.spi.healthmgr.Symptom;
 
-
-public class BackPressurePolicy implements HealthPolicy {
+public class DynamicResourceAllocationPolicy implements HealthPolicy {
 
   private UnderProvisioningDiagnoser underProvisioningDiagnoser = new UnderProvisioningDiagnoser();
   private DataSkewDiagnoser dataSkewDiagnoser = new DataSkewDiagnoser();
   private SlowInstanceDiagnoser slowInstanceDiagnoser = new SlowInstanceDiagnoser();
+  private OverprovisioningDiagnoser overprovisioningDiagnoser = new OverprovisioningDiagnoser();
 
+  private ScaleDownResolver scaleDownResolver = new ScaleDownResolver();
   private ScaleUpResolver scaleUpResolver = new ScaleUpResolver();
   private TopologyAPI.Topology topology;
 
   private DiagnoserService diagnoserService;
   private ResolverService resolverService;
+
+
+  public void setPacketsThreshold(int noPackets) {
+    overprovisioningDiagnoser.setPacketThreshold(noPackets);
+  }
 
   @Override
   public void initialize(Config conf, Config runtime) {
@@ -52,8 +58,11 @@ public class BackPressurePolicy implements HealthPolicy {
     underProvisioningDiagnoser.initialize(conf, runtime);
     dataSkewDiagnoser.initialize(conf, runtime);
     slowInstanceDiagnoser.initialize(conf, runtime);
+    overprovisioningDiagnoser.initialize(conf, runtime);
 
+    scaleDownResolver.initialize(conf, runtime);
     scaleUpResolver.initialize(conf, runtime);
+
     diagnoserService = (DiagnoserService) Runtime
         .getDiagnoserService(runtime);
     resolverService = (ResolverService) Runtime
@@ -63,6 +72,24 @@ public class BackPressurePolicy implements HealthPolicy {
   @Override
   public void execute() {
 
+    Diagnosis<ComponentSymptom> overprovisioningDiagnosis =
+        diagnoserService.run(overprovisioningDiagnoser, topology);
+
+    if (overprovisioningDiagnosis != null && overprovisioningDiagnosis.getSummary().size() != 0) {
+      System.out.println(overprovisioningDiagnosis.getSummary().toString());
+      Diagnosis<ComponentSymptom> lowPendingPacketsDiagnosis = new Diagnosis<>();
+      lowPendingPacketsDiagnosis.addToDiagnosis(overprovisioningDiagnosis.getSummary().
+          iterator().next());
+      if (!resolverService.isBlackListedAction(topology, "SCALE_DOWN_RESOLVER",
+          lowPendingPacketsDiagnosis, overprovisioningDiagnoser)) {
+        double outcomeImprovement = resolverService.estimateResolverOutcome(scaleDownResolver,
+            topology, lowPendingPacketsDiagnosis);
+        resolverService.run(scaleDownResolver, topology, "SCALE_DOWN_RESOLVER",
+            lowPendingPacketsDiagnosis, outcomeImprovement);
+      }
+      return;
+    }
+
     Diagnosis<ComponentSymptom> slowInstanceDiagnosis =
         diagnoserService.run(slowInstanceDiagnoser, topology);
 
@@ -70,6 +97,7 @@ public class BackPressurePolicy implements HealthPolicy {
       if (!resolverService.isBlackListedAction(topology, "SLOW_INSTANCE_RESOLVER",
           slowInstanceDiagnosis, slowInstanceDiagnoser)) {
       }
+      return;
     }
 
     Diagnosis<ComponentSymptom> dataSkewDiagnosis =
@@ -80,6 +108,7 @@ public class BackPressurePolicy implements HealthPolicy {
           dataSkewDiagnosis, dataSkewDiagnoser)) {
 
       }
+      return;
     }
 
     Diagnosis<ComponentSymptom> limitedParallelismDiagnosis =
@@ -93,6 +122,7 @@ public class BackPressurePolicy implements HealthPolicy {
         resolverService.run(scaleUpResolver, topology, "SCALE_UP_RESOLVER",
             limitedParallelismDiagnosis, outcomeImprovement);
       }
+      return;
     }
   }
 
@@ -113,6 +143,10 @@ public class BackPressurePolicy implements HealthPolicy {
         case "SCALE_UP_RESOLVER":
           evaluateAction(underProvisioningDiagnoser, scaleUpResolver, lastAction);
           break;
+        case "SCALE_DOWN_RESOLVER": {
+          evaluateAction(overprovisioningDiagnoser, scaleDownResolver, lastAction);
+          break;
+        }
         default:
           break;
       }
@@ -144,5 +178,7 @@ public class BackPressurePolicy implements HealthPolicy {
     dataSkewDiagnoser.close();
     slowInstanceDiagnoser.close();
     scaleUpResolver.close();
+    overprovisioningDiagnoser.close();
+    scaleDownResolver.close();
   }
 }

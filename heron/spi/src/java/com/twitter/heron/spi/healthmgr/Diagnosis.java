@@ -19,7 +19,7 @@ import java.util.Set;
 /**
  * Describes a set of problems detected by a detector
  */
-public class Diagnosis<T extends Bottleneck> {
+public class Diagnosis<T extends Symptom> {
 
   private Set<T> summary;
 

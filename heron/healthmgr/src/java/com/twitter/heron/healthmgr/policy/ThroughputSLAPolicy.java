@@ -17,28 +17,30 @@ package com.twitter.heron.healthmgr.policy;
 import java.util.List;
 
 import com.twitter.heron.api.generated.TopologyAPI;
-import com.twitter.heron.healthmgr.detector.BackPressureDetector;
-import com.twitter.heron.healthmgr.detector.ReportingDetector;
+import com.twitter.heron.healthmgr.actionlog.ActionEntry;
+import com.twitter.heron.healthmgr.diagnoser.LowInputThroughputDiagnoser;
 import com.twitter.heron.healthmgr.resolver.SpoutScaleUpResolver;
-import com.twitter.heron.healthmgr.services.DetectorService;
+import com.twitter.heron.healthmgr.services.DiagnoserService;
 import com.twitter.heron.healthmgr.services.ResolverService;
 import com.twitter.heron.scheduler.utils.Runtime;
 import com.twitter.heron.spi.common.Config;
-import com.twitter.heron.spi.healthmgr.ComponentBottleneck;
+import com.twitter.heron.spi.healthmgr.ComponentSymptom;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
 import com.twitter.heron.spi.healthmgr.HealthPolicy;
+import com.twitter.heron.spi.healthmgr.IDiagnoser;
+import com.twitter.heron.spi.healthmgr.IResolver;
+import com.twitter.heron.spi.healthmgr.Symptom;
 
 
 public class ThroughputSLAPolicy implements HealthPolicy {
 
-  private static final String EMIT_COUNT_METRIC = "__emit-count/default";
-  private BackPressureDetector backPressureDetector = new BackPressureDetector();
-  private ReportingDetector emitCountDetector = new ReportingDetector(EMIT_COUNT_METRIC);
+  private LowInputThroughputDiagnoser lowInputThroughputDiagnoser =
+      new LowInputThroughputDiagnoser();
 
   private SpoutScaleUpResolver spoutScaleUpResolver = new SpoutScaleUpResolver();
   private TopologyAPI.Topology topology;
 
-  private DetectorService detectorService;
+  private DiagnoserService diagnoserService;
   private ResolverService resolverService;
   private double maxThroughput = 0;
 
@@ -48,12 +50,11 @@ public class ThroughputSLAPolicy implements HealthPolicy {
   public void initialize(Config conf, Config runtime) {
     this.topology = Runtime.topology(runtime);
 
-    backPressureDetector.initialize(conf, runtime);
-    emitCountDetector.initialize(conf, runtime);
-
+    lowInputThroughputDiagnoser.initialize(conf, runtime);
+    lowInputThroughputDiagnoser.setSpoutThroughput(this.maxThroughput);
     spoutScaleUpResolver.initialize(conf, runtime);
-    detectorService = (DetectorService) Runtime
-        .getDetectorService(runtime);
+    diagnoserService = (DiagnoserService) Runtime
+        .getDiagnoserService(runtime);
     resolverService = (ResolverService) Runtime
         .getResolverService(runtime);
   }
@@ -65,33 +66,16 @@ public class ThroughputSLAPolicy implements HealthPolicy {
   @Override
   public void execute() {
 
-    performedAction = false;
-    Diagnosis<ComponentBottleneck> backPressureDiagnosis =
-        detectorService.run(backPressureDetector, topology);
-    System.out.println("Found backpressure");
-
-    if (backPressureDiagnosis.getSummary().size() == 0) {
-      System.out.println("No backpressure");
-      Diagnosis<ComponentBottleneck> emitCountDiagnosis =
-          detectorService.run(emitCountDetector, topology);
-      List<TopologyAPI.Spout> spouts = topology.getSpoutsList();
-      for (ComponentBottleneck component : emitCountDiagnosis.getSummary()) {
-        int position = contains(spouts, component.getComponentName());
-        if (position != -1) {
-          Diagnosis<ComponentBottleneck> spoutDiagnosis = new Diagnosis<ComponentBottleneck>();
-          spoutDiagnosis.addToDiagnosis(component);
-          if (!resolverService.isBlackListedAction(topology, "SPOUT_SCALE_UP_RESOLVER",
-              spoutDiagnosis, emitCountDetector)) {
-            spoutScaleUpResolver.setMaxEMitCount(this.maxThroughput);
-            double outcomeImprovement = resolverService.estimateResolverOutcome(
-                spoutScaleUpResolver, topology, spoutDiagnosis);
-            resolverService.run(spoutScaleUpResolver, topology, "SPOUT_SCALE_UP_RESOLVER",
-                spoutDiagnosis, outcomeImprovement);
-            performedAction = true;
-          } else {
-            System.out.println("Trying sth else");
-          }
-        }
+    Diagnosis<ComponentSymptom> lowInputThroughputDiagnosis =
+        diagnoserService.run(lowInputThroughputDiagnoser, topology);
+    if (lowInputThroughputDiagnosis != null) {
+      if (!resolverService.isBlackListedAction(topology, "SPOUT_SCALE_UP_RESOLVER",
+          lowInputThroughputDiagnosis, lowInputThroughputDiagnoser)) {
+        spoutScaleUpResolver.setMaxEmitCount(this.maxThroughput);
+        double outcomeImprovement = resolverService.estimateResolverOutcome(
+            spoutScaleUpResolver, topology, lowInputThroughputDiagnosis);
+        resolverService.run(spoutScaleUpResolver, topology, "SPOUT_SCALE_UP_RESOLVER",
+            lowInputThroughputDiagnosis, outcomeImprovement);
       }
     }
   }
@@ -109,23 +93,24 @@ public class ThroughputSLAPolicy implements HealthPolicy {
   @Override
   public void evaluate() {
     /*if(performedAction) {
-      ActionEntry<? extends Bottleneck> lastAction = resolverService.getLog()
+      ActionEntry<? extends Symptom> lastAction = resolverService.getLog()
           .getLastAction(topology.getName());
       System.out.println("last action " + lastAction);
       evaluateAction(emitCountDetector, spoutScaleUpResolver, lastAction);
     }*/
   }
 
-  /*@SuppressWarnings("unchecked")
-  private <T extends Bottleneck> void evaluateAction(IDetector<T> detector, IResolver<T> resolver,
-                                                     ActionEntry<? extends Bottleneck> lastAction) {
-    Boolean success = true;
-    Diagnosis<? extends Bottleneck> newDiagnosis;
-    newDiagnosis = detectorService.run(detector, topology);
+  @SuppressWarnings("unchecked")
+  private <T extends Symptom> void evaluateAction(IDiagnoser<T> detector, IResolver<T> resolver,
+                                                  ActionEntry<? extends Symptom> lastAction) {
+    return;
+   /* Boolean success = true;
+    Diagnosis<? extends Symptom> newDiagnosis;
+    newDiagnosis = symptomDetectorService.run(detector, topology);
     List<TopologyAPI.Spout> spouts = topology.getSpoutsList();
-    Diagnosis<ComponentBottleneck> spoutDiagnosis = new Diagnosis<>();
+    Diagnosis<ComponentSymptom> spoutDiagnosis = new Diagnosis<>();
 
-    for(ComponentBottleneck component : ((Diagnosis<ComponentBottleneck>) newDiagnosis).getSummary()){
+    for(ComponentSymptom component : ((Diagnosis<ComponentSymptom>) newDiagnosis).getSummary()){
       int position = contains(spouts, component.getComponentName());
       if(position != -1){
         spoutDiagnosis.addToDiagnosis(component);
@@ -141,13 +126,12 @@ public class ThroughputSLAPolicy implements HealthPolicy {
         resolverService.addToBlackList(topology, lastAction.getAction(), lastAction.getDiagnosis(),
             ((ActionEntry<T>) lastAction).getChange());
       }
-    }
-  }*/
+    }*/
+  }
 
   @Override
   public void close() {
-    backPressureDetector.close();
-    emitCountDetector.close();
+    lowInputThroughputDiagnoser.close();
     spoutScaleUpResolver.close();
   }
 }

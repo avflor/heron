@@ -16,10 +16,10 @@ package com.twitter.heron.healthmgr.actionlog;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
-import com.twitter.heron.spi.healthmgr.Bottleneck;
+import com.twitter.heron.spi.healthmgr.Symptom;
 import com.twitter.heron.spi.healthmgr.Diagnosis;
 
-public class ActionEntry<T extends Bottleneck> {
+public class ActionEntry<T extends Symptom> {
   private String actionTime;
   private String action;
   private Diagnosis<T> diagnosis;

@@ -14,26 +14,26 @@
 
 package com.twitter.heron.healthmgr.policy;
 
-import java.util.concurrent.TimeUnit;
-
 import org.junit.Before;
 import org.junit.Test;
 
 import com.twitter.heron.api.generated.TopologyAPI;
 import com.twitter.heron.common.basics.ByteAmount;
-import com.twitter.heron.healthmgr.services.DetectorService;
+import com.twitter.heron.healthmgr.services.DiagnoserService;
 import com.twitter.heron.healthmgr.services.ResolverService;
+import com.twitter.heron.healthmgr.services.SymptomDetectorService;
 import com.twitter.heron.healthmgr.sinkvisitor.TrackerVisitor;
 import com.twitter.heron.healthmgr.utils.TestUtils;
 import com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking;
+import com.twitter.heron.packing.roundrobin.RoundRobinPacking;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
 import com.twitter.heron.scheduler.client.SchedulerClientFactory;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Key;
+import com.twitter.heron.spi.packing.PackingPlan;
 import com.twitter.heron.spi.statemgr.IStateManager;
 import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
 import com.twitter.heron.statemgr.localfs.LocalFileSystemStateManager;
-
 
 public class ThroughputSLAPolicyTest {
 
@@ -51,7 +51,8 @@ public class ThroughputSLAPolicyTest {
   @Test
   public void testPolicy() throws InterruptedException {
 
-    DetectorService ds = new DetectorService();
+    SymptomDetectorService ds = new SymptomDetectorService();
+    DiagnoserService gs = new DiagnoserService();
     ResolverService rs = new ResolverService();
     Config config = Config.newBuilder()
         .put(Key.REPACKING_CLASS, ResourceCompliantRRPacking.class.getName())
@@ -71,12 +72,18 @@ public class ThroughputSLAPolicyTest {
     SchedulerStateManagerAdaptor adaptor =
         new SchedulerStateManagerAdaptor(stateManager, 5000);
 
+    RoundRobinPacking packing = new RoundRobinPacking();
+    packing.initialize(config, topology);
+    PackingPlan packingPlan = packing.pack();
+
     Config runtime = Config.newBuilder()
         .put(Key.SCHEDULER_STATE_MANAGER_ADAPTOR, adaptor)
         .put(Key.TOPOLOGY_NAME, "ds")
         .put(Key.TRACKER_URL, "http://localhost:8888")
-        .put(Key.HEALTH_MGR_DETECTOR_SERVICE, ds)
+        .put(Key.HEALTH_MGR_SYMPTOM_DETECTOR_SERVICE, ds)
+        .put(Key.HEALTH_MGR_DIAGNOSER_SERVICE, gs)
         .put(Key.HEALTH_MGR_RESOLVER_SERVICE, rs)
+        .put(Key.PACKING_PLAN, packingPlan)
         .build();
 
     ISchedulerClient schedulerClient = new SchedulerClientFactory(config, runtime)
@@ -94,13 +101,14 @@ public class ThroughputSLAPolicyTest {
     visitor.initialize(config, runtime);
 
     ThroughputSLAPolicy policy = new ThroughputSLAPolicy();
+    policy.setSpoutThroughput(200000000);
+
     policy.initialize(config, runtime);
 
-    policy.setSpoutThroughput(300000000);
     policy.execute();
 
     //TimeUnit.MINUTES.sleep(2);
-    policy.evaluate();
+    //policy.evaluate();
 
   }
 }
