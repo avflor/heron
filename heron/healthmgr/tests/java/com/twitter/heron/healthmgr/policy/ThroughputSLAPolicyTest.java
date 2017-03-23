@@ -45,7 +45,7 @@ public class ThroughputSLAPolicyTest {
    */
   @Before
   public void setUp() throws Exception {
-    this.topology = TestUtils.getTopology("ds");
+    this.topology = TestUtils.getTopology("ex");
   }
 
   @Test
@@ -53,6 +53,7 @@ public class ThroughputSLAPolicyTest {
 
     SymptomDetectorService ds = new SymptomDetectorService();
     DiagnoserService gs = new DiagnoserService();
+
     ResolverService rs = new ResolverService();
     Config config = Config.newBuilder()
         .put(Key.REPACKING_CLASS, ResourceCompliantRRPacking.class.getName())
@@ -61,7 +62,7 @@ public class ThroughputSLAPolicyTest {
         .put(Key.INSTANCE_DISK, ByteAmount.fromGigabytes(1).asBytes())
         .put(Key.STATEMGR_ROOT_PATH, "/home/avrilia/.herondata/repository/state/local")
         .put(Key.STATE_MANAGER_CLASS, LocalFileSystemStateManager.class.getName())
-        .put(Key.TOPOLOGY_NAME, "ds")
+        .put(Key.TOPOLOGY_NAME, "ex")
         .put(Key.CLUSTER, "local")
         .put(Key.TRACKER_URL, "http://localhost:8888")
         .put(Key.SCHEDULER_IS_SERVICE, true)
@@ -78,7 +79,7 @@ public class ThroughputSLAPolicyTest {
 
     Config runtime = Config.newBuilder()
         .put(Key.SCHEDULER_STATE_MANAGER_ADAPTOR, adaptor)
-        .put(Key.TOPOLOGY_NAME, "ds")
+        .put(Key.TOPOLOGY_NAME, "ex")
         .put(Key.TRACKER_URL, "http://localhost:8888")
         .put(Key.HEALTH_MGR_SYMPTOM_DETECTOR_SERVICE, ds)
         .put(Key.HEALTH_MGR_DIAGNOSER_SERVICE, gs)
@@ -101,7 +102,7 @@ public class ThroughputSLAPolicyTest {
     visitor.initialize(config, runtime);
 
     ThroughputSLAPolicy policy = new ThroughputSLAPolicy();
-    policy.setSpoutThroughput(200000000);
+    policy.setSpoutThroughput(300000000);
 
     policy.initialize(config, runtime);
 
@@ -109,6 +110,7 @@ public class ThroughputSLAPolicyTest {
 
     //TimeUnit.MINUTES.sleep(2);
     //policy.evaluate();
+
 
   }
 }
