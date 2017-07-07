@@ -26,35 +26,16 @@ import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName;
 
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_BACK_PRESSURE;
-import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_PROCESSING_RATE_SKEW;
-import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_WAIT_Q_DISPARITY;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_LARGE_WAIT_Q;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.
+    SYMPTOM_PROCESSING_RATE_SKEW;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_SMALL_WAIT_Q;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.
+    SYMPTOM_UNSATURATED_COMPONENT;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.
+    SYMPTOM_WAIT_Q_DISPARITY;
 
 public abstract class BaseDiagnoser implements IDiagnoser {
-  public enum DiagnosisName {
-    SYMPTOM_UNDER_PROVISIONING("SYMPTOM_UNDER_PROVISIONING"),
-    SYMPTOM_DATA_SKEW("SYMPTOM_DATA_SKEW"),
-    SYMPTOM_SLOW_INSTANCE("SYMPTOM_SLOW_INSTANCE"),
-
-    DIAGNOSIS_UNDER_PROVISIONING(UnderProvisioningDiagnoser.class.getSimpleName()),
-    DIAGNOSIS_SLOW_INSTANCE(SlowInstanceDiagnoser.class.getSimpleName()),
-    DIAGNOSIS_DATA_SKEW(DataSkewDiagnoser.class.getSimpleName());
-
-    private String text;
-
-    DiagnosisName(String name) {
-      this.text = name;
-    }
-
-    public String text() {
-      return text;
-    }
-
-    @Override
-    public String toString() {
-      return text();
-    }
-  }
-
   List<Symptom> getBackPressureSymptoms(List<Symptom> symptoms) {
     return getFilteredSymptoms(symptoms, SYMPTOM_BACK_PRESSURE);
   }
@@ -65,6 +46,18 @@ public abstract class BaseDiagnoser implements IDiagnoser {
 
   Map<String, ComponentMetrics> getWaitQDisparityComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_WAIT_Q_DISPARITY);
+  }
+
+  protected Map<String, ComponentMetrics> getLargeWaitQComponents(List<Symptom> symptoms) {
+    return getFilteredComponents(symptoms, SYMPTOM_LARGE_WAIT_Q);
+  }
+
+  protected Map<String, ComponentMetrics> getSmallWaitQComponents(List<Symptom> symptoms) {
+    return getFilteredComponents(symptoms, SYMPTOM_SMALL_WAIT_Q);
+  }
+
+  protected Map<String, ComponentMetrics> getUnsaturatedComponents(List<Symptom> symptoms) {
+    return getFilteredComponents(symptoms, SYMPTOM_UNSATURATED_COMPONENT);
   }
 
   private List<Symptom> getFilteredSymptoms(List<Symptom> symptoms, SymptomName type) {
@@ -86,5 +79,32 @@ public abstract class BaseDiagnoser implements IDiagnoser {
       }
     }
     return result;
+  }
+
+  public enum DiagnosisName {
+    SYMPTOM_OVER_PROVISIONING("SYMPTOM_OVER_PROVISIONING"),
+    SYMPTOM_UNDER_PROVISIONING("SYMPTOM_UNDER_PROVISIONING"),
+    SYMPTOM_DATA_SKEW("SYMPTOM_DATA_SKEW"),
+    SYMPTOM_SLOW_INSTANCE("SYMPTOM_SLOW_INSTANCE"),
+
+    DIAGNOSIS_OVER_PROVISIONING(OverProvisioningDiagnoser.class.getSimpleName()),
+    DIAGNOSIS_UNDER_PROVISIONING(UnderProvisioningDiagnoser.class.getSimpleName()),
+    DIAGNOSIS_SLOW_INSTANCE(SlowInstanceDiagnoser.class.getSimpleName()),
+    DIAGNOSIS_DATA_SKEW(DataSkewDiagnoser.class.getSimpleName());
+
+    private String text;
+
+    DiagnosisName(String name) {
+      this.text = name;
+    }
+
+    public String text() {
+      return text;
+    }
+
+    @Override
+    public String toString() {
+      return text();
+    }
   }
 }

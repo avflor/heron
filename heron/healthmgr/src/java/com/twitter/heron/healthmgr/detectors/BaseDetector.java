@@ -21,8 +21,10 @@ public abstract class BaseDetector implements IDetector {
     SYMPTOM_BACK_PRESSURE(BackPressureDetector.class.getSimpleName()),
     SYMPTOM_GROWING_WAIT_Q(GrowingWaitQueueDetector.class.getSimpleName()),
     SYMPTOM_LARGE_WAIT_Q(LargeWaitQueueDetector.class.getSimpleName()),
+    SYMPTOM_SMALL_WAIT_Q(SmallWaitQueueDetector.class.getSimpleName()),
     SYMPTOM_PROCESSING_RATE_SKEW(ProcessingRateSkewDetector.class.getSimpleName()),
-    SYMPTOM_WAIT_Q_DISPARITY(WaitQueueDisparityDetector.class.getSimpleName());
+    SYMPTOM_WAIT_Q_DISPARITY(WaitQueueDisparityDetector.class.getSimpleName()),
+    SYMPTOM_UNSATURATED_COMPONENT(UnsaturatedComponentDetector.class.getSimpleName());
 
     private String text;
 
