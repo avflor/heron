@@ -25,7 +25,6 @@ import com.microsoft.dhalion.api.IDetector;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 
-import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.ComponentMetricsHelper;
 import com.twitter.heron.healthmgr.common.MetricsStats;
 import com.twitter.heron.healthmgr.common.StatsCollector;
