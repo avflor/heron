@@ -26,8 +26,7 @@ import org.junit.Test;
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.sensors.BufferSizeSensor;
 
-import static com.twitter.heron.healthmgr.detectors.LargeWaitQueueDetector.
-    LARGE_WAIT_QUEUE_SIZE_LIMIT;
+import static com.twitter.heron.healthmgr.detectors.LargeWaitQueueDetector.LARGE_WAIT_QUEUE_SIZE_LIMIT;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -38,6 +37,7 @@ public class LargeWaitQueueDetectorTest {
   public void testConfigAndFilter() {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(LARGE_WAIT_QUEUE_SIZE_LIMIT, 1000)).thenReturn(20);
+
 
     ComponentMetrics compMetrics
         = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 21);

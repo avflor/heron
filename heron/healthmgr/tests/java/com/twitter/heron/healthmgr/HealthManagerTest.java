@@ -18,7 +18,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.inject.Inject;
 
 import com.google.inject.AbstractModule;
@@ -70,6 +69,7 @@ public class HealthManagerTest {
 
     Map<String, Object> policy = new HashMap<>();
     policy.put(PolicyConfigKey.HEALTH_POLICY_CLASS.key(), TestPolicy.class.getName());
+
     policy.put("test-config", "test-value");
 
     String[] policyIds = {"policy"};
@@ -94,16 +94,16 @@ public class HealthManagerTest {
   }
 
   static class TestPolicy extends HealthPolicyImpl {
-    private HealthPolicyConfig config;
     private final ISchedulerClient schedulerClient;
     private final SchedulerStateManagerAdaptor stateMgrAdaptor;
     private final MetricsProvider metricsProvider;
+    private HealthPolicyConfig config;
 
     @Inject
-    public TestPolicy(HealthPolicyConfig config,
-                      ISchedulerClient schedulerClient,
-                      SchedulerStateManagerAdaptor stateMgrAdaptor,
-                      MetricsProvider metricsProvider) {
+    TestPolicy(HealthPolicyConfig config,
+               ISchedulerClient schedulerClient,
+               SchedulerStateManagerAdaptor stateMgrAdaptor,
+               MetricsProvider metricsProvider) {
       this.config = config;
       this.schedulerClient = schedulerClient;
       this.stateMgrAdaptor = stateMgrAdaptor;

@@ -18,47 +18,60 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Optional;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 
 import org.junit.Test;
 
-import com.twitter.heron.healthmgr.HealthPolicyConfig;
-import com.twitter.heron.healthmgr.sensors.BufferSizeSensor;
+import com.twitter.heron.healthmgr.common.StatsCollector;
+import com.twitter.heron.healthmgr.sensors.ExecuteCountSensor;
 
-import static com.twitter.heron.healthmgr.detectors.SmallWaitQueueDetector.
-    SMALL_WAIT_QUEUE_SIZE_LIMIT;
-import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
+import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_EXE_COUNT;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 public class UnsaturatedComponentDetectorTest {
-  @Test
-  public void testConfigAndFilter() {
-    HealthPolicyConfig config = mock(HealthPolicyConfig.class);
-    when(config.getConfig(SMALL_WAIT_QUEUE_SIZE_LIMIT, "5")).thenReturn("5");
 
-    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 5);
+  @Test
+  public void testPositiveUnsaturatedComponent() {
+    StatsCollector statsCollector = new StatsCollector();
+    StatsCollector spyCollector = spy(statsCollector);
+    doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
+
+
+    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
     Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
     topologyMetrics.put("bolt", compMetrics);
 
-    BufferSizeSensor sensor = mock(BufferSizeSensor.class);
+    ExecuteCountSensor sensor = mock(ExecuteCountSensor.class);
     when(sensor.get()).thenReturn(topologyMetrics);
 
-    SmallWaitQueueDetector detector = new SmallWaitQueueDetector(sensor, config);
+    UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(sensor, spyCollector);
     List<Symptom> symptoms = detector.detect();
 
     assertEquals(1, symptoms.size());
+  }
 
-    compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 6);
+  @Test
+  public void testNegativeUnsaturatedComponent() {
+    StatsCollector statsCollector = new StatsCollector();
+    StatsCollector spyCollector = spy(statsCollector);
+    doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
+
+
+    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 1001);
+    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
     topologyMetrics.put("bolt", compMetrics);
 
-    sensor = mock(BufferSizeSensor.class);
+    ExecuteCountSensor sensor = mock(ExecuteCountSensor.class);
     when(sensor.get()).thenReturn(topologyMetrics);
 
-    detector = new SmallWaitQueueDetector(sensor, config);
-    symptoms = detector.detect();
+    UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(sensor, spyCollector);
+    List<Symptom> symptoms = detector.detect();
 
     assertEquals(0, symptoms.size());
   }

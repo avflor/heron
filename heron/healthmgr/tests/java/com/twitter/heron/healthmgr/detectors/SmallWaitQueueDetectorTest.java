@@ -26,8 +26,7 @@ import org.junit.Test;
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.sensors.BufferSizeSensor;
 
-import static com.twitter.heron.healthmgr.detectors.SmallWaitQueueDetector.
-    SMALL_WAIT_QUEUE_SIZE_LIMIT;
+import static com.twitter.heron.healthmgr.detectors.SmallWaitQueueDetector.SMALL_WAIT_QUEUE_SIZE_LIMIT;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -37,11 +36,9 @@ public class SmallWaitQueueDetectorTest {
   @Test
   public void testConfigAndFilter() {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
-    when(config.getConfig(SMALL_WAIT_QUEUE_SIZE_LIMIT, "1000")).thenReturn("20");
 
-    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(),
-        21);
-
+    when(config.getConfig(SMALL_WAIT_QUEUE_SIZE_LIMIT, "5")).thenReturn("5");
+    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 5);
     Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
     topologyMetrics.put("bolt", compMetrics);
 
@@ -53,7 +50,7 @@ public class SmallWaitQueueDetectorTest {
 
     assertEquals(1, symptoms.size());
 
-    compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 19);
+    compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 6);
     topologyMetrics.put("bolt", compMetrics);
 
     sensor = mock(BufferSizeSensor.class);

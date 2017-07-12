@@ -25,13 +25,21 @@ import com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName;
 import com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName;
 
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_BACK_PRESSURE;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_LARGE_WAIT_Q;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_PROCESSING_RATE_SKEW;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_SMALL_WAIT_Q;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_UNSATURATED_COMPONENT;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_WAIT_Q_DISPARITY;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_EXE_COUNT;
 
-public class TestUtils {
+
+public final class TestUtils {
+
+  private TestUtils() {
+  }
+
   public static List<Symptom> createBpSymptomList(int... bpValues) {
     return createListFromSymptom(createBPSymptom(bpValues));
   }
@@ -44,7 +52,20 @@ public class TestUtils {
     return createSymptom(SYMPTOM_WAIT_Q_DISPARITY, METRIC_BUFFER_SIZE, bufferSizes);
   }
 
-  private static Symptom createBPSymptom(int... bpValues) {
+
+  public static Symptom createLargeWaitQSymptom(int... bufferSizes) {
+    return createSymptom(SYMPTOM_LARGE_WAIT_Q, METRIC_BUFFER_SIZE, bufferSizes);
+  }
+
+  public static Symptom createSmallWaitQSymptom(int... bufferSizes) {
+    return createSymptom(SYMPTOM_SMALL_WAIT_Q, METRIC_BUFFER_SIZE, bufferSizes);
+  }
+
+  public static Symptom createUnsaturatedComponentSymptom(int... exeCounts) {
+    return createSymptom(SYMPTOM_UNSATURATED_COMPONENT, METRIC_EXE_COUNT, exeCounts);
+  }
+
+  public static Symptom createBPSymptom(int... bpValues) {
     return createSymptom(SYMPTOM_BACK_PRESSURE, METRIC_BACK_PRESSURE, bpValues);
   }
 

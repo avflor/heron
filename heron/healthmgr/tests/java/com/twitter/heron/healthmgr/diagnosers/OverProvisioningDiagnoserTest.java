@@ -14,6 +14,8 @@
 
 package com.twitter.heron.healthmgr.diagnosers;
 
+
+import java.util.ArrayList;
 import java.util.List;
 
 import com.microsoft.dhalion.detector.Symptom;
@@ -24,40 +26,57 @@ import org.junit.Test;
 
 import com.twitter.heron.healthmgr.TestUtils;
 
-import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
+
+import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
+import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_EXE_COUNT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class OverProvisioningDiagnoserTest {
   @Test
-  public void diagnosisWhen1Of1InstanceInBP() {
-    List<Symptom> symptoms = TestUtils.createBpSymptomList(123, 0);
-    //symptoms.add(TestUtils.createLargeWaitQSymptom(5000));
-    Diagnosis result = new UnderProvisioningDiagnoser().diagnose(symptoms);
-    validateDiagnosis(result);
+  public void diagnosisWhenSmallWaitQueue() {
+    List<Symptom> symptoms = new ArrayList<>();
+    symptoms.add(TestUtils.createSmallWaitQSymptom(1));
+    Diagnosis result = new OverProvisioningDiagnoser().diagnose(symptoms);
+    validateDiagnosisWithSmallQueue(result);
   }
 
   @Test
-  public void diagnosisFailsNotSimilarQueueSizes() {
-    List<Symptom> symptoms = TestUtils.createBpSymptomList(123, 0, 0);
-    symptoms.add(TestUtils.createWaitQueueDisparitySymptom(100, 500, 500));
-    Diagnosis result = new UnderProvisioningDiagnoser().diagnose(symptoms);
-    assertNull(result);
+  public void diagnosisWhenUnsaturatedComponent() {
+    List<Symptom> symptoms = new ArrayList<>();
+    symptoms.add(TestUtils.createUnsaturatedComponentSymptom(100));
+    Diagnosis result = new OverProvisioningDiagnoser().diagnose(symptoms);
+    validateDiagnosisWithUnsaturatedComponent(result);
   }
 
   @Test
-  public void diagnosisFailsNotSimilarProcessingRates() {
-    List<Symptom> symptoms = TestUtils.createBpSymptomList(123, 0, 0);
-    symptoms.add(TestUtils.createExeCountSymptom(100, 500, 500));
+  public void diagnosisBothSymptoms() {
+    List<Symptom> symptoms = new ArrayList<>();
+    symptoms.add(TestUtils.createSmallWaitQSymptom(1));
+    symptoms.add(TestUtils.createUnsaturatedComponentSymptom(100));
+    Diagnosis result = new OverProvisioningDiagnoser().diagnose(symptoms);
+    validateDiagnosisWithUnsaturatedComponent(result);
+  }
 
-    Diagnosis result = new UnderProvisioningDiagnoser().diagnose(symptoms);
+  @Test
+  public void diagnosisFails() {
+    List<Symptom> symptoms = new ArrayList<>();
+    Diagnosis result = new OverProvisioningDiagnoser().diagnose(symptoms);
     assertNull(result);
   }
 
-  private void validateDiagnosis(Diagnosis result) {
+  private void validateDiagnosisWithSmallQueue(Diagnosis result) {
     assertEquals(1, result.getSymptoms().size());
     ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponent();
-    assertEquals(123,
-        data.getMetricValueSum("container_1_bolt_0", METRIC_BACK_PRESSURE.text()).intValue());
+    assertEquals(1,
+        data.getMetricValueSum("container_1_bolt_0", METRIC_BUFFER_SIZE.text()).intValue());
+  }
+
+  private void validateDiagnosisWithUnsaturatedComponent(Diagnosis result) {
+    assertEquals(1, result.getSymptoms().size());
+    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponent();
+
+    assertEquals(100,
+        data.getMetricValueSum("container_1_bolt_0", METRIC_EXE_COUNT.text()).intValue());
   }
 }
