@@ -27,13 +27,10 @@ import com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName;
 
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_BACK_PRESSURE;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_LARGE_WAIT_Q;
-import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.
-    SYMPTOM_PROCESSING_RATE_SKEW;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_PROCESSING_RATE_SKEW;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_SMALL_WAIT_Q;
-import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.
-    SYMPTOM_UNSATURATED_COMPONENT;
-import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.
-    SYMPTOM_WAIT_Q_DISPARITY;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_UNSATURATED_COMPONENT;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_WAIT_Q_DISPARITY;
 
 public abstract class BaseDiagnoser implements IDiagnoser {
   List<Symptom> getBackPressureSymptoms(List<Symptom> symptoms) {
