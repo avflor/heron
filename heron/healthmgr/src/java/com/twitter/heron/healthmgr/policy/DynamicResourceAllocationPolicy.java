@@ -34,10 +34,14 @@ import com.twitter.heron.healthmgr.common.HealthManagerEvents.TopologyUpdate;
 import com.twitter.heron.healthmgr.detectors.BackPressureDetector;
 import com.twitter.heron.healthmgr.detectors.LargeWaitQueueDetector;
 import com.twitter.heron.healthmgr.detectors.ProcessingRateSkewDetector;
+import com.twitter.heron.healthmgr.detectors.SmallWaitQueueDetector;
+import com.twitter.heron.healthmgr.detectors.UnsaturatedComponentDetector;
 import com.twitter.heron.healthmgr.detectors.WaitQueueDisparityDetector;
 import com.twitter.heron.healthmgr.diagnosers.DataSkewDiagnoser;
+import com.twitter.heron.healthmgr.diagnosers.OverProvisioningDiagnoser;
 import com.twitter.heron.healthmgr.diagnosers.SlowInstanceDiagnoser;
 import com.twitter.heron.healthmgr.diagnosers.UnderProvisioningDiagnoser;
+import com.twitter.heron.healthmgr.resolvers.ScaleDownResolver;
 import com.twitter.heron.healthmgr.resolvers.ScaleUpResolver;
 
 import static com.twitter.heron.healthmgr.HealthPolicyConfigReader.PolicyConfigKey.HEALTH_POLICY_INTERVAL;
@@ -55,24 +59,31 @@ public class DynamicResourceAllocationPolicy extends HealthPolicyImpl
       = Logger.getLogger(DynamicResourceAllocationPolicy.class.getName());
   private HealthPolicyConfig policyConfig;
   private ScaleUpResolver scaleUpResolver;
+  private ScaleDownResolver scaleDownResolver;
+
 
   @Inject
   DynamicResourceAllocationPolicy(HealthPolicyConfig policyConfig,
                                   EventManager eventManager,
                                   BackPressureDetector backPressureDetector,
-                                  LargeWaitQueueDetector largeWaitQueueDetector,
+                                  SmallWaitQueueDetector smallWaitQueueDetector,
+                                  UnsaturatedComponentDetector unsaturatedComponentDetector,
                                   ProcessingRateSkewDetector dataSkewDetector,
                                   WaitQueueDisparityDetector waitQueueDisparityDetector,
                                   UnderProvisioningDiagnoser underProvisioningDiagnoser,
+                                  OverProvisioningDiagnoser overProvisioningDiagnoser,
                                   DataSkewDiagnoser dataSkewDiagnoser,
                                   SlowInstanceDiagnoser slowInstanceDiagnoser,
-                                  ScaleUpResolver scaleUpResolver) {
+                                  ScaleUpResolver scaleUpResolver,
+                                  ScaleDownResolver scaleDownResolver) {
     this.policyConfig = policyConfig;
     this.scaleUpResolver = scaleUpResolver;
+    this.scaleDownResolver = scaleDownResolver;
 
-    registerDetectors(backPressureDetector, largeWaitQueueDetector,
+    registerDetectors(backPressureDetector, smallWaitQueueDetector, unsaturatedComponentDetector,
         waitQueueDisparityDetector, dataSkewDetector);
-    registerDiagnosers(underProvisioningDiagnoser, dataSkewDiagnoser, slowInstanceDiagnoser);
+    registerDiagnosers(underProvisioningDiagnoser, overProvisioningDiagnoser,
+        dataSkewDiagnoser, slowInstanceDiagnoser);
 
     setPolicyExecutionInterval(TimeUnit.MILLISECONDS,
         (Long) policyConfig.getConfig(HEALTH_POLICY_INTERVAL.key(), 60000));
@@ -91,6 +102,8 @@ public class DynamicResourceAllocationPolicy extends HealthPolicyImpl
       LOG.warning("Slow Instance diagnoses. This diagnosis does not have any resolver.");
     } else if (diagnosisMap.containsKey(DIAGNOSIS_UNDER_PROVISIONING.text())) {
       return scaleUpResolver;
+    } else if (diagnosisMap.containsKey(OverProvisioningDiagnoser.class.getSimpleName())){
+      return scaleDownResolver;
     }
 
     return null;
