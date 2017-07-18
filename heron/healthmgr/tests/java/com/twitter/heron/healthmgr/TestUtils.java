@@ -25,10 +25,12 @@ import com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName;
 import com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName;
 
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_BACK_PRESSURE;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_GROWING_WAIT_Q;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_LARGE_WAIT_Q;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_PROCESSING_RATE_SKEW;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_SMALL_WAIT_Q;
-import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_UNSATURATED_COMPONENT;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_UNSATURATEDCOMP_HIGHCONF;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_UNSATURATEDCOMP_LOWCONF;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_WAIT_Q_DISPARITY;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
@@ -61,8 +63,16 @@ public final class TestUtils {
     return createSymptom(SYMPTOM_SMALL_WAIT_Q, METRIC_BUFFER_SIZE, bufferSizes);
   }
 
-  public static Symptom createUnsaturatedComponentSymptom(int... exeCounts) {
-    return createSymptom(SYMPTOM_UNSATURATED_COMPONENT, METRIC_EXE_COUNT, exeCounts);
+  public static Symptom createHighConfUnsaturatedComponentSymptom(int... exeCounts) {
+    return createSymptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF, METRIC_EXE_COUNT, exeCounts);
+  }
+
+  public static Symptom createLowConfUnsaturatedComponentSymptom(int... exeCounts) {
+    return createSymptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF, METRIC_EXE_COUNT, exeCounts);
+  }
+
+  public static Symptom createGrowingWaitingQueueSymptom(int... bufferSizes) {
+    return createSymptom(SYMPTOM_GROWING_WAIT_Q, METRIC_BUFFER_SIZE, bufferSizes);
   }
 
   public static Symptom createBPSymptom(int... bpValues) {

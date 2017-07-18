@@ -27,7 +27,16 @@ import org.junit.Test;
 import com.twitter.heron.healthmgr.common.StatsCollector;
 import com.twitter.heron.healthmgr.sensors.ExecuteCountSensor;
 
+<<<<<<< HEAD:heron/healthmgr/tests/java/com/twitter/heron/healthmgr/detectors/UnsaturatedComponentDetectorTest.java
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_EXE_COUNT;
+=======
+import static com.google.common.base.Optional.*;
+import static com.twitter.heron.healthmgr.common.HealthMgrConstants.METRIC_BUFFER_SIZE;
+import static com.twitter.heron.healthmgr.common.HealthMgrConstants.METRIC_EXE_COUNT;
+import static com.twitter.heron.healthmgr.common.HealthMgrConstants.SYMPTOM_UNSATURATEDCOMP_HIGHCONF;
+import static com.twitter.heron.healthmgr.common.HealthMgrConstants.SYMPTOM_UNSATURATEDCOMP_LOWCONF;
+import static com.twitter.heron.healthmgr.detectors.SmallWaitQueueDetector.SMALL_WAIT_QUEUE_SIZE_LIMIT;
+>>>>>>> 8177834... Introduced high and low confidence symptoms in the overprovisioning diagnoser:heron/healthm/tests/java/com/twitter/heron/healthmgr/detectors/UnsaturatedComponentDetectorTest.java
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -37,10 +46,18 @@ import static org.mockito.Mockito.when;
 public class UnsaturatedComponentDetectorTest {
 
   @Test
+<<<<<<< HEAD:heron/healthmgr/tests/java/com/twitter/heron/healthmgr/detectors/UnsaturatedComponentDetectorTest.java
   public void testPositiveUnsaturatedComponent() {
     StatsCollector statsCollector = new StatsCollector();
     StatsCollector spyCollector = spy(statsCollector);
     doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
+=======
+  public void testHighConfUnsaturatedComponentwithBackpressure() {
+    StatsCollector statsCollector =  new StatsCollector();
+    StatsCollector spyCollector = spy(statsCollector);
+    doReturn(Optional.of((double)1000)).when(spyCollector).getProcessingRateStats("bolt");
+    doReturn(true).when(spyCollector).getBackpressureData("bolt");
+>>>>>>> 8177834... Introduced high and low confidence symptoms in the overprovisioning diagnoser:heron/healthm/tests/java/com/twitter/heron/healthmgr/detectors/UnsaturatedComponentDetectorTest.java
 
 
     ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
@@ -52,7 +69,47 @@ public class UnsaturatedComponentDetectorTest {
 
     UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(sensor, spyCollector);
     List<Symptom> symptoms = detector.detect();
+    assertEquals(SYMPTOM_UNSATURATEDCOMP_HIGHCONF, symptoms.get(0).getName());
+    assertEquals(1, symptoms.size());
+  }
 
+  @Test
+  public void testHighConfUnsaturatedComponentNoBackpressure() {
+    StatsCollector statsCollector =  new StatsCollector();
+    StatsCollector spyCollector = spy(statsCollector);
+    doReturn(Optional.of((double)1000)).when(spyCollector).getProcessingRateStats("bolt");
+    doReturn(false).when(spyCollector).getBackpressureData("bolt");
+
+    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT, 500);
+    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
+    topologyMetrics.put("bolt", compMetrics);
+
+    ExecuteCountSensor sensor = mock(ExecuteCountSensor.class);
+    when(sensor.get()).thenReturn(topologyMetrics);
+
+    UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(sensor, spyCollector);
+    List<Symptom> symptoms = detector.detect();
+    assertEquals(SYMPTOM_UNSATURATEDCOMP_HIGHCONF, symptoms.get(0).getName());
+    assertEquals(1, symptoms.size());
+  }
+
+  @Test
+  public void testLowConfUnsaturatedComponent() {
+    StatsCollector statsCollector =  new StatsCollector();
+    StatsCollector spyCollector = spy(statsCollector);
+    doReturn(Optional.of((double)1000)).when(spyCollector).getProcessingRateStats("bolt");
+    doReturn(false).when(spyCollector).getBackpressureData("bolt");
+
+    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT, 900);
+    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
+    topologyMetrics.put("bolt", compMetrics);
+
+    ExecuteCountSensor sensor = mock(ExecuteCountSensor.class);
+    when(sensor.get()).thenReturn(topologyMetrics);
+
+    UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(sensor, spyCollector);
+    List<Symptom> symptoms = detector.detect();
+    assertEquals(SYMPTOM_UNSATURATEDCOMP_LOWCONF, symptoms.get(0).getName());
     assertEquals(1, symptoms.size());
   }
 
