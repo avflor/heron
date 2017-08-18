@@ -37,7 +37,7 @@ public class SmallWaitQueueDetectorTest {
   public void testConfigAndFilter() {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
 
-    when(config.getConfig(SMALL_WAIT_QUEUE_SIZE_LIMIT, "5")).thenReturn("5");
+    when(config.getConfig(SMALL_WAIT_QUEUE_SIZE_LIMIT, 5.0)).thenReturn(5.0);
     ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 5);
     Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
     topologyMetrics.put("bolt", compMetrics);

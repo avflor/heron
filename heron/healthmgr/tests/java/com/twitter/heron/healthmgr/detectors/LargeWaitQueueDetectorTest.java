@@ -36,7 +36,7 @@ public class LargeWaitQueueDetectorTest {
   @Test
   public void testConfigAndFilter() {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
-    when(config.getConfig(LARGE_WAIT_QUEUE_SIZE_LIMIT, 1000)).thenReturn(20);
+    when(config.getConfig(LARGE_WAIT_QUEUE_SIZE_LIMIT, 1000.0)).thenReturn(20.0);
 
 
     ComponentMetrics compMetrics

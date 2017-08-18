@@ -30,10 +30,12 @@ import com.microsoft.dhalion.resolver.Action;
 import org.junit.Test;
 
 import com.twitter.heron.api.generated.TopologyAPI;
+import com.twitter.heron.common.utils.topology.TopologyTests;
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.PackingPlanProvider;
 import com.twitter.heron.healthmgr.common.StatsCollector;
 import com.twitter.heron.healthmgr.common.TopologyProvider;
+import com.twitter.heron.healthmgr.sensors.BaseSensor;
 import com.twitter.heron.packing.roundrobin.RoundRobinPacking;
 import com.twitter.heron.proto.scheduler.Scheduler.UpdateTopologyRequest;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
@@ -41,10 +43,9 @@ import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Key;
 import com.twitter.heron.spi.packing.IRepacking;
 import com.twitter.heron.spi.packing.PackingPlan;
-import com.twitter.heron.spi.utils.TopologyTests;
 
-import static com.twitter.heron.healthmgr.common.HealthMgrConstants.SYMPTOM_OVER_PROVISIONING_SMALLWAITQ;
-import static com.twitter.heron.healthmgr.common.HealthMgrConstants.SYMPTOM_OVER_PROVISIONING_UNSATCOMP;
+import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_OVER_PROVISIONING_SMALLWAITQ;
+import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_OVER_PROVISIONING_UNSATCOMP;
 import static com.twitter.heron.healthmgr.resolvers.ScaleDownResolver.CONF_SCALE_DOWN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -58,8 +59,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ScaleDownResolverTest {
-  static final String EXE_COUNT = HealthMgrConstants.METRIC_EXE_COUNT;
-  static final String BUFFER_SIZE = HealthMgrConstants.METRIC_BUFFER_SIZE;
+  static final String EXE_COUNT = BaseSensor.MetricName.METRIC_EXE_COUNT.text();
+  static final String BUFFER_SIZE = BaseSensor.MetricName.METRIC_BUFFER_SIZE.text();
 
   private EventManager eventManager = new EventManager();
 
@@ -67,10 +68,10 @@ public class ScaleDownResolverTest {
   public void testResolveSmallWaitQ() {
     StatsCollector statsCollector = new StatsCollector();
     StatsCollector spyCollector = spy(statsCollector);
-    doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
+    doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt-1");
 
     HealthPolicyConfig healthconfig = mock(HealthPolicyConfig.class);
-    when(healthconfig.getConfig(CONF_SCALE_DOWN, "5")).thenReturn("10");
+    when(healthconfig.getConfig(CONF_SCALE_DOWN, 5)).thenReturn(10);
 
     TopologyAPI.Topology topology = createTestTopology();
     Config config = createConfig(topology);
@@ -85,7 +86,7 @@ public class ScaleDownResolverTest {
     ComponentMetrics metrics = new ComponentMetrics("bolt-1", "i1", BUFFER_SIZE, 1);
     metrics.addInstanceMetric(new InstanceMetrics("i2", BUFFER_SIZE, 1));
 
-    Symptom symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ, metrics);
+    Symptom symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text(), metrics);
     List<Diagnosis> diagnosis = new ArrayList<>();
     diagnosis.add(new Diagnosis("test", symptom));
 
@@ -109,7 +110,7 @@ public class ScaleDownResolverTest {
     doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
 
     HealthPolicyConfig healthconfig = mock(HealthPolicyConfig.class);
-    when(healthconfig.getConfig(CONF_SCALE_DOWN, "5")).thenReturn("10");
+    when(healthconfig.getConfig(CONF_SCALE_DOWN, 5)).thenReturn(10);
 
     TopologyAPI.Topology topology = createTestTopology();
     Config config = createConfig(topology);
@@ -124,7 +125,7 @@ public class ScaleDownResolverTest {
     ComponentMetrics metrics = new ComponentMetrics("bolt-1", "i1", EXE_COUNT, 100);
     metrics.addInstanceMetric(new InstanceMetrics("i2", EXE_COUNT, 150));
 
-    Symptom symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP, metrics);
+    Symptom symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics);
     List<Diagnosis> diagnosis = new ArrayList<>();
     diagnosis.add(new Diagnosis("test", symptom));
 
@@ -148,7 +149,7 @@ public class ScaleDownResolverTest {
     doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
 
     HealthPolicyConfig healthconfig = mock(HealthPolicyConfig.class);
-    when(healthconfig.getConfig(CONF_SCALE_DOWN, "5")).thenReturn("10");
+    when(healthconfig.getConfig(CONF_SCALE_DOWN, 5)).thenReturn(10);
 
     TopologyAPI.Topology topology = createTestTopology();
     Config config = createConfig(topology);
@@ -188,7 +189,7 @@ public class ScaleDownResolverTest {
     doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
 
     HealthPolicyConfig healthconfig = mock(HealthPolicyConfig.class);
-    when(healthconfig.getConfig(CONF_SCALE_DOWN, "5")).thenReturn("50");
+    when(healthconfig.getConfig(CONF_SCALE_DOWN, 5)).thenReturn(50);
 
     Map<String, Integer> changeRequest = new HashMap<>();
     changeRequest.put("bolt-1", 1);
@@ -245,7 +246,7 @@ public class ScaleDownResolverTest {
     doReturn(Optional.of((double) 200)).when(spyCollector).getProcessingRateStats("bolt");
 
     HealthPolicyConfig healthconfig = mock(HealthPolicyConfig.class);
-    when(healthconfig.getConfig(CONF_SCALE_DOWN, "5")).thenReturn("50");
+    when(healthconfig.getConfig(CONF_SCALE_DOWN, 5)).thenReturn(50);
 
     ScaleDownResolver resolver =
         new ScaleDownResolver(null, null, null, eventManager, null,
@@ -255,7 +256,8 @@ public class ScaleDownResolverTest {
     metrics.addInstanceMetric(new InstanceMetrics("i1", BUFFER_SIZE, 1));
     metrics.addInstanceMetric(new InstanceMetrics("i2", BUFFER_SIZE, 1));
 
-    int result = resolver.computeScaleDownFactor(metrics, SYMPTOM_OVER_PROVISIONING_SMALLWAITQ);
+    int result = resolver.computeScaleDownFactor(metrics, SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.
+        text());
     assertEquals(1, result);
 
     metrics = new ComponentMetrics("bolt");
@@ -263,7 +265,7 @@ public class ScaleDownResolverTest {
     metrics.addInstanceMetric(new InstanceMetrics("i2", EXE_COUNT, 100));
     metrics.addInstanceMetric(new InstanceMetrics("i3", EXE_COUNT, 100));
 
-    result = resolver.computeScaleDownFactor(metrics, SYMPTOM_OVER_PROVISIONING_UNSATCOMP);
+    result = resolver.computeScaleDownFactor(metrics, SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text());
     assertEquals(2, result);
   }
 }

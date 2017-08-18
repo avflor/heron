@@ -30,8 +30,9 @@ import com.twitter.heron.healthmgr.common.StatsCollector;
 import com.twitter.heron.healthmgr.sensors.BaseSensor;
 import com.twitter.heron.healthmgr.sensors.ExecuteCountSensor;
 
-import static com.twitter.heron.healthmgr.common.HealthMgrConstants.SYMPTOM_UNSATURATEDCOMP_HIGHCONF;
-import static com.twitter.heron.healthmgr.common.HealthMgrConstants.SYMPTOM_UNSATURATEDCOMP_LOWCONF;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_UNSATURATEDCOMP_HIGHCONF;
+import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_UNSATURATEDCOMP_LOWCONF;
+
 
 public class UnsaturatedComponentDetector extends BaseDetector {
 
@@ -68,19 +69,19 @@ public class UnsaturatedComponentDetector extends BaseDetector {
                 + "maximum processing " + "rate is %f, previous observed maximum rate is %f",
             compMetrics.getName(), stats.getMetricMax(), maxProcessingRateObserved));
 
-        result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF, compMetrics));
+        result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics));
       } else if (!backpressureObserved) {
         if (stats.getMetricMax() <= 0.8 * maxProcessingRateObserved) {
           LOG.info(String.format("Detected unsaturated component with high confidence %s: current "
                   + "maximum processing " + "rate is %f, previous observed maximum rate is %f",
               compMetrics.getName(), stats.getMetricMax(), maxProcessingRateObserved));
-          result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF, compMetrics));
+          result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics));
         } else if (stats.getMetricMax() > 0.8 * maxProcessingRateObserved
             && stats.getMetricMax() <= maxProcessingRateObserved) {
           LOG.info(String.format("Detected unsaturated component with low confidence %s: current "
                   + "maximum processing " + "rate is %f, previous observed maximum rate is %f",
               compMetrics.getName(), stats.getMetricMax(), maxProcessingRateObserved));
-          result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF, compMetrics));
+          result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF.text(), compMetrics));
         }
       }
     }

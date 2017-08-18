@@ -85,9 +85,10 @@ public class ScaleDownResolver implements IResolver {
   public List<Action> resolve(List<Diagnosis> diagnosis) {
     for (Diagnosis diagnoses : diagnosis) {
 
-      Symptom ovUnsatCompSymptom = diagnoses.getSymptoms().get(SYMPTOM_OVER_PROVISIONING_UNSATCOMP);
+      Symptom ovUnsatCompSymptom = diagnoses.getSymptoms().get
+          (SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text());
       Symptom ovSmallWaitQSymptom = diagnoses.getSymptoms().get(
-          SYMPTOM_OVER_PROVISIONING_SMALLWAITQ);
+          SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text());
       Symptom overprovisioningSymptom = ovUnsatCompSymptom != null ? ovUnsatCompSymptom :
           ovSmallWaitQSymptom;
 
@@ -139,11 +140,13 @@ public class ScaleDownResolver implements IResolver {
 
   @VisibleForTesting
   int computeScaleDownFactor(ComponentMetrics componentMetrics, String symptomName) {
+    System.out.println("LLL" + symptomName);
+
     int parallelism = 0;
-    if (symptomName.equals(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ)) {
+    if (symptomName.equals(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text())) {
       parallelism = (int) Math.ceil(componentMetrics.getMetrics().size() * (100 -
           scaleDownConf) / 100.0);
-    } else if (symptomName.equals(SYMPTOM_OVER_PROVISIONING_UNSATCOMP)) {
+    } else if (symptomName.equals(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text())) {
       int currentTotalProcessingRate = 0;
       double maxProcessingRateObserved = this.statsCollector.getProcessingRateStats(
           componentMetrics.getName()).get();
@@ -156,6 +159,7 @@ public class ScaleDownResolver implements IResolver {
 
     LOG.info(String.format("Component's, %s new parallelism is: %d",
         componentMetrics.getName(), parallelism));
+    System.out.println("LLL" + parallelism);
     return parallelism;
   }
 
