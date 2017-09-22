@@ -22,9 +22,9 @@ import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.diagnoser.Diagnosis;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.InstanceMetrics;
+import com.microsoft.dhalion.metrics.MetricsStats;
 
 import com.twitter.heron.healthmgr.common.ComponentMetricsHelper;
-import com.twitter.heron.healthmgr.common.MetricsStats;
 
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.DIAGNOSIS_SLOW_INSTANCE;
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_SLOW_INSTANCE;
@@ -62,7 +62,7 @@ public class SlowInstanceDiagnoser extends BaseDiagnoser {
     ComponentMetrics mergedData = ComponentMetrics.merge(bpMetrics, pendingBufferMetrics);
     ComponentMetricsHelper compStats = new ComponentMetricsHelper(mergedData);
     compStats.computeBpStats();
-    MetricsStats bufferStats = compStats.computeMinMaxStats(METRIC_BUFFER_SIZE);
+    MetricsStats bufferStats = compStats.computeMinMaxStats(METRIC_BUFFER_SIZE.text());
 
     Symptom resultSymptom = null;
     for (InstanceMetrics boltMetrics : compStats.getBoltsWithBackpressure()) {

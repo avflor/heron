@@ -22,12 +22,14 @@ import java.util.logging.Logger;
 import javax.inject.Inject;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Optional;
 import com.microsoft.dhalion.api.IResolver;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.diagnoser.Diagnosis;
 import com.microsoft.dhalion.events.EventManager;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.InstanceMetrics;
+import com.microsoft.dhalion.metrics.StatsCollector;
 import com.microsoft.dhalion.resolver.Action;
 
 import com.twitter.heron.api.generated.TopologyAPI.Topology;
@@ -35,8 +37,8 @@ import com.twitter.heron.common.basics.SysUtils;
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.HealthManagerEvents.TopologyUpdate;
 import com.twitter.heron.healthmgr.common.PackingPlanProvider;
-import com.twitter.heron.healthmgr.common.StatsCollector;
 import com.twitter.heron.healthmgr.common.TopologyProvider;
+import com.twitter.heron.healthmgr.sensors.BaseSensor;
 import com.twitter.heron.proto.scheduler.Scheduler;
 import com.twitter.heron.proto.system.PackingPlans;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
@@ -140,7 +142,6 @@ public class ScaleDownResolver implements IResolver {
 
   @VisibleForTesting
   int computeScaleDownFactor(ComponentMetrics componentMetrics, String symptomName) {
-    System.out.println("LLL" + symptomName);
 
     int parallelism = 0;
     if (symptomName.equals(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text())) {
@@ -148,8 +149,8 @@ public class ScaleDownResolver implements IResolver {
           scaleDownConf) / 100.0);
     } else if (symptomName.equals(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text())) {
       int currentTotalProcessingRate = 0;
-      double maxProcessingRateObserved = this.statsCollector.getProcessingRateStats(
-          componentMetrics.getName()).get();
+      double maxProcessingRateObserved = this.statsCollector.getMetricData(BaseSensor
+          .MetricName.METRIC_EXE_COUNT.text(), componentMetrics.getName()).get();
       for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
         Double metricValue = instanceMetrics.getMetricValueSum(METRIC_EXE_COUNT.text());
         currentTotalProcessingRate += metricValue;
@@ -159,7 +160,6 @@ public class ScaleDownResolver implements IResolver {
 
     LOG.info(String.format("Component's, %s new parallelism is: %d",
         componentMetrics.getName(), parallelism));
-    System.out.println("LLL" + parallelism);
     return parallelism;
   }
 

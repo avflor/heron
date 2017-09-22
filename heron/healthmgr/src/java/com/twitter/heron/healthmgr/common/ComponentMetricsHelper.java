@@ -21,10 +21,9 @@ import java.util.Map;
 
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.InstanceMetrics;
+import com.microsoft.dhalion.metrics.MetricsStats;
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
-
-import com.twitter.heron.healthmgr.sensors.BaseSensor;
 
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
@@ -78,23 +77,8 @@ public class ComponentMetricsHelper {
     }
   }
 
-  public MetricsStats computeMinMaxStats(BaseSensor.MetricName metric) {
-    return computeMinMaxStats(metric.text());
-  }
-
   public MetricsStats computeMinMaxStats(String metric) {
-    double metricMax = 0;
-    double metricMin = Double.MAX_VALUE;
-    for (InstanceMetrics instance : componentMetrics.getMetrics().values()) {
-
-      Double metricValue = instance.getMetricValueSum(metric);
-      if (metricValue == null) {
-        continue;
-      }
-      metricMax = metricMax < metricValue ? metricValue : metricMax;
-      metricMin = metricMin > metricValue ? metricValue : metricMin;
-    }
-    return new MetricsStats(metricMin, metricMax);
+    return componentMetrics.computeMinMaxStats(metric);
   }
 
   public double getTotalBackpressure() {

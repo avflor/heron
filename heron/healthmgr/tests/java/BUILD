@@ -3,7 +3,7 @@ load("/tools/rules/java_tests", "java_tests")
 load("/tools/rules/heron_deps", "heron_java_proto_files")
 
 healthmgr_deps_files = [
-    "//heron/healthm/src/java:healthmgr-java",
+    "//heron/healthmgr/src/java:healthmgr-java",
     "//heron/api/src/java:api-java",
     "//heron/api/src/java:classification",
     "//heron/common/src/java:basics-java",

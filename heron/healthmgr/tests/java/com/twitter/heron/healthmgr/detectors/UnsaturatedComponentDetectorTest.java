@@ -21,10 +21,11 @@ import java.util.Map;
 import com.google.common.base.Optional;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
+import com.microsoft.dhalion.metrics.StatsCollector;
 
 import org.junit.Test;
 
-import com.twitter.heron.healthmgr.common.StatsCollector;
+import com.twitter.heron.healthmgr.sensors.BaseSensor;
 import com.twitter.heron.healthmgr.sensors.ExecuteCountSensor;
 
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_UNSATURATEDCOMP_HIGHCONF;
@@ -42,8 +43,10 @@ public class UnsaturatedComponentDetectorTest {
   public void testHighConfUnsaturatedComponentwithBackpressure() {
     StatsCollector statsCollector = new StatsCollector();
     StatsCollector spyCollector = spy(statsCollector);
-    doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
-    doReturn(true).when(spyCollector).getBackpressureData("bolt");
+    doReturn(Optional.of((double) 1000)).when(spyCollector).getMetricData(BaseSensor.MetricName
+        .METRIC_EXE_COUNT.text(), "bolt");
+    doReturn(Optional.of((double) 100)).when(spyCollector).getMetricData(BaseSensor.MetricName
+        .METRIC_BACK_PRESSURE.text(), "bolt");
 
     ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
     Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
@@ -62,8 +65,10 @@ public class UnsaturatedComponentDetectorTest {
   public void testHighConfUnsaturatedComponentNoBackpressure() {
     StatsCollector statsCollector = new StatsCollector();
     StatsCollector spyCollector = spy(statsCollector);
-    doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
-    doReturn(false).when(spyCollector).getBackpressureData("bolt");
+    doReturn(Optional.of((double) 1000)).when(spyCollector).getMetricData(BaseSensor.MetricName
+        .METRIC_EXE_COUNT.text(), "bolt");
+    doReturn(Optional.of((double) 0)).when(spyCollector).getMetricData(BaseSensor.MetricName
+        .METRIC_BACK_PRESSURE.text(), "bolt");
 
     ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 500);
     Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
@@ -82,8 +87,10 @@ public class UnsaturatedComponentDetectorTest {
   public void testLowConfUnsaturatedComponent() {
     StatsCollector statsCollector = new StatsCollector();
     StatsCollector spyCollector = spy(statsCollector);
-    doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
-    doReturn(false).when(spyCollector).getBackpressureData("bolt");
+    doReturn(Optional.of((double) 1000)).when(spyCollector).getMetricData(BaseSensor.MetricName
+        .METRIC_EXE_COUNT.text(), "bolt");
+    doReturn(Optional.of((double) 0)).when(spyCollector).getMetricData(BaseSensor.MetricName
+        .METRIC_BACK_PRESSURE.text(), "bolt");
 
     ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 900);
     Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
@@ -102,7 +109,8 @@ public class UnsaturatedComponentDetectorTest {
   public void testNegativeUnsaturatedComponent() {
     StatsCollector statsCollector = new StatsCollector();
     StatsCollector spyCollector = spy(statsCollector);
-    doReturn(Optional.of((double) 1000)).when(spyCollector).getProcessingRateStats("bolt");
+    doReturn(Optional.of((double) 1000)).when(spyCollector).getMetricData(BaseSensor.MetricName
+        .METRIC_EXE_COUNT.text(), "bolt");
 
 
     ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 1001);

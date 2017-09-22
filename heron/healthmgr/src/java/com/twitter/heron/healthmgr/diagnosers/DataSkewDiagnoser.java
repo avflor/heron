@@ -23,9 +23,9 @@ import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.diagnoser.Diagnosis;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.InstanceMetrics;
+import com.microsoft.dhalion.metrics.MetricsStats;
 
 import com.twitter.heron.healthmgr.common.ComponentMetricsHelper;
-import com.twitter.heron.healthmgr.common.MetricsStats;
 
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.DIAGNOSIS_DATA_SKEW;
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_DATA_SKEW;
@@ -66,8 +66,8 @@ public class DataSkewDiagnoser extends BaseDiagnoser {
         ComponentMetrics.merge(exeCountMetrics, pendingBufferMetrics));
     ComponentMetricsHelper compStats = new ComponentMetricsHelper(mergedData);
     compStats.computeBpStats();
-    MetricsStats exeStats = compStats.computeMinMaxStats(METRIC_EXE_COUNT);
-    MetricsStats bufferStats = compStats.computeMinMaxStats(METRIC_BUFFER_SIZE);
+    MetricsStats exeStats = compStats.computeMinMaxStats(METRIC_EXE_COUNT.text());
+    MetricsStats bufferStats = compStats.computeMinMaxStats(METRIC_BUFFER_SIZE.text());
 
     Symptom resultSymptom = null;
     for (InstanceMetrics boltMetrics : compStats.getBoltsWithBackpressure()) {

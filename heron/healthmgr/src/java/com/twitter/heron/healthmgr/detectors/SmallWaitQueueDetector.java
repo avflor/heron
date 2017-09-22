@@ -24,10 +24,10 @@ import javax.inject.Inject;
 import com.microsoft.dhalion.api.IDetector;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
+import com.microsoft.dhalion.metrics.MetricsStats;
 
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.ComponentMetricsHelper;
-import com.twitter.heron.healthmgr.common.MetricsStats;
 import com.twitter.heron.healthmgr.sensors.BaseSensor;
 import com.twitter.heron.healthmgr.sensors.BufferSizeSensor;
 
@@ -60,7 +60,8 @@ public class SmallWaitQueueDetector implements IDetector {
     Map<String, ComponentMetrics> bufferSizes = pendingBufferSensor.get();
     for (ComponentMetrics compMetrics : bufferSizes.values()) {
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
-      MetricsStats stats = compStats.computeMinMaxStats(BaseSensor.MetricName.METRIC_BUFFER_SIZE);
+      MetricsStats stats = compStats.computeMinMaxStats(BaseSensor.MetricName.
+          METRIC_BUFFER_SIZE.text());
       if (stats.getMetricMax() <= threshold) {
         LOG.info(String.format("Detected small wait queues for %s, largest queue is %f",
             compMetrics.getName(), stats.getMetricMax()));

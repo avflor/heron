@@ -19,7 +19,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,8 +33,11 @@ import com.google.inject.Injector;
 import com.google.inject.Singleton;
 import com.google.inject.name.Names;
 import com.microsoft.dhalion.api.IHealthPolicy;
+import com.microsoft.dhalion.api.ISensor;
 import com.microsoft.dhalion.api.MetricsProvider;
 import com.microsoft.dhalion.events.EventManager;
+import com.microsoft.dhalion.metrics.MetricsCollector;
+import com.microsoft.dhalion.metrics.StatsCollector;
 import com.microsoft.dhalion.policy.PoliciesExecutor;
 
 import org.apache.commons.cli.CommandLine;
@@ -213,6 +219,20 @@ public class HealthManager {
     LOG.info("Initializing health manager");
     healthManager.initialize();
 
+    LOG.info("Start MetricsCollector");
+
+    StatsCollector statsCollector = new StatsCollector();
+    MetricsCollector metricsCollector = new MetricsCollector(statsCollector, healthManager
+        .findUniqueSensors());
+    ScheduledExecutorService metricsExecutor = Executors.newSingleThreadScheduledExecutor();
+    ScheduledFuture<?> metricsFuture = metricsExecutor.scheduleWithFixedDelay(metricsCollector,1,1,
+        TimeUnit.MINUTES);
+    try {
+      metricsFuture.get();
+    } finally {
+      metricsExecutor.shutdownNow();
+    }
+
     LOG.info("Starting Health Manager");
 
     PoliciesExecutor policyExecutor = new PoliciesExecutor(healthManager.healthPolicies);
@@ -272,6 +292,22 @@ public class HealthManager {
 
       healthPolicies.add(policy);
     }
+  }
+
+  private List<ISensor> findUniqueSensors(){
+    List<ISensor> uniqueSensors = new ArrayList<>();
+    List<String> sensorMetrics = new ArrayList<>();
+    for (int i = 0; i < healthPolicies.size(); i++){
+      List<ISensor> currentSensors = healthPolicies.get(i).getSensors();
+      for(int j = 0; j < currentSensors.size(); j++){
+        String metricName = currentSensors.get(j).getMetricName();
+        if(!sensorMetrics.contains(metricName)){
+          sensorMetrics.add(metricName);
+          uniqueSensors.add(currentSensors.get(j));
+        }
+      }
+    }
+    return uniqueSensors;
   }
 
   @VisibleForTesting
