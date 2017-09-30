@@ -53,7 +53,7 @@ public class UnderProvisioningDiagnoser extends BaseDiagnoser {
     compStats.computeBpStats();
     LOG.info(String.format("UNDER_PROVISIONING: %s back-pressure(%s) and similar processing rates "
             + "and buffer sizes",
-        bpMetrics.getName(), compStats.getTotalBackpressure()));
+        bpMetrics.getComponentName(), compStats.getTotalBackpressure()));
 
 
     Symptom resultSymptom = new Symptom(SYMPTOM_UNDER_PROVISIONING.text(), bpMetrics);

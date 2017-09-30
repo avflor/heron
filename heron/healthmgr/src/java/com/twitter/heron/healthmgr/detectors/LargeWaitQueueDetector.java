@@ -60,10 +60,10 @@ public class LargeWaitQueueDetector extends BaseDetector {
     Map<String, ComponentMetrics> bufferSizes = pendingBufferSensor.get();
     for (ComponentMetrics compMetrics : bufferSizes.values()) {
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
-      MetricsStats stats = compStats.computeMinMaxStats(METRIC_BUFFER_SIZE.text());
+      MetricsStats stats = compStats.computeStats(METRIC_BUFFER_SIZE.text());
       if (stats.getMetricMin() > sizeLimit) {
         LOG.info(String.format("Detected large wait queues for %s, smallest queue is %f",
-            compMetrics.getName(), stats.getMetricMin()));
+            compMetrics.getComponentName(), stats.getMetricMin()));
         result.add(new Symptom(SYMPTOM_LARGE_WAIT_Q.text(), compMetrics));
       }
     }

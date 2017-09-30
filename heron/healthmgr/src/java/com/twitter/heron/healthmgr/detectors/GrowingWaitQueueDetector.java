@@ -63,7 +63,7 @@ public class GrowingWaitQueueDetector implements IDetector {
       compStats.computeBufferSizeTrend();
       if (compStats.getMaxBufferChangeRate() > rateLimit) {
         LOG.info(String.format("Detected growing wait queues for %s, max rate %f",
-            compMetrics.getName(), compStats.getMaxBufferChangeRate()));
+            compMetrics.getComponentName(), compStats.getMaxBufferChangeRate()));
         result.add(new Symptom(SYMPTOM_GROWING_WAIT_Q.text(), compMetrics));
       }
     }

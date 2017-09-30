@@ -54,10 +54,10 @@ public class SkewDetector extends BaseDetector {
     Map<String, ComponentMetrics> metrics = sensor.get();
     for (ComponentMetrics compMetrics : metrics.values()) {
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
-      MetricsStats stats = compStats.computeMinMaxStats(sensor.getMetricName());
+      MetricsStats stats = compStats.computeStats(sensor.getMetricName());
       if (stats.getMetricMax() > skewRatio * stats.getMetricMin()) {
         LOG.info(String.format("Detected skew for %s, min = %f, max = %f",
-            compMetrics.getName(), stats.getMetricMin(), stats.getMetricMax()));
+            compMetrics.getComponentName(), stats.getMetricMin(), stats.getMetricMax()));
         result.add(new Symptom(symptomName.text(), compMetrics));
       }
     }

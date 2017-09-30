@@ -54,8 +54,8 @@ public class DataSkewDiagnoser extends BaseDiagnoser {
     ComponentMetrics bpMetrics = bpSymptoms.iterator().next().getComponent();
 
     // verify data skew, larger queue size and back pressure for the same component exists
-    ComponentMetrics exeCountMetrics = processingRateSkewComponents.get(bpMetrics.getName());
-    ComponentMetrics pendingBufferMetrics = waitQDisparityComponents.get(bpMetrics.getName());
+    ComponentMetrics exeCountMetrics = processingRateSkewComponents.get(bpMetrics.getComponentName());
+    ComponentMetrics pendingBufferMetrics = waitQDisparityComponents.get(bpMetrics.getComponentName());
     if (exeCountMetrics == null || pendingBufferMetrics == null) {
       // no processing rate skew and buffer size skew
       // for the component with back pressure. This is not a data skew case
@@ -66,8 +66,8 @@ public class DataSkewDiagnoser extends BaseDiagnoser {
         ComponentMetrics.merge(exeCountMetrics, pendingBufferMetrics));
     ComponentMetricsHelper compStats = new ComponentMetricsHelper(mergedData);
     compStats.computeBpStats();
-    MetricsStats exeStats = compStats.computeMinMaxStats(METRIC_EXE_COUNT.text());
-    MetricsStats bufferStats = compStats.computeMinMaxStats(METRIC_BUFFER_SIZE.text());
+    MetricsStats exeStats = compStats.computeStats(METRIC_EXE_COUNT.text());
+    MetricsStats bufferStats = compStats.computeStats(METRIC_BUFFER_SIZE.text());
 
     Symptom resultSymptom = null;
     for (InstanceMetrics boltMetrics : compStats.getBoltsWithBackpressure()) {

@@ -53,7 +53,8 @@ public class SlowInstanceDiagnoser extends BaseDiagnoser {
     ComponentMetrics bpMetrics = bpSymptoms.iterator().next().getComponent();
 
     // verify wait Q disparity and back pressure for the same component exists
-    ComponentMetrics pendingBufferMetrics = waitQDisparityComponents.get(bpMetrics.getName());
+    ComponentMetrics pendingBufferMetrics = waitQDisparityComponents.get(bpMetrics.
+        getComponentName());
     if (pendingBufferMetrics == null) {
       // no wait Q disparity for the component with back pressure. There is no slow instance
       return null;
@@ -62,7 +63,7 @@ public class SlowInstanceDiagnoser extends BaseDiagnoser {
     ComponentMetrics mergedData = ComponentMetrics.merge(bpMetrics, pendingBufferMetrics);
     ComponentMetricsHelper compStats = new ComponentMetricsHelper(mergedData);
     compStats.computeBpStats();
-    MetricsStats bufferStats = compStats.computeMinMaxStats(METRIC_BUFFER_SIZE.text());
+    MetricsStats bufferStats = compStats.computeStats(METRIC_BUFFER_SIZE.text());
 
     Symptom resultSymptom = null;
     for (InstanceMetrics boltMetrics : compStats.getBoltsWithBackpressure()) {

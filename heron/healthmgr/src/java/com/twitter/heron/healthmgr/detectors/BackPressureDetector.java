@@ -62,7 +62,7 @@ public class BackPressureDetector implements IDetector {
       compStats.computeBpStats();
       if (compStats.getTotalBackpressure() > noiseFilterMillis) {
         LOG.info(String.format("Detected back pressure for %s, total back pressure is %f",
-            compMetrics.getName(), compStats.getTotalBackpressure()));
+            compMetrics.getComponentName(), compStats.getTotalBackpressure()));
         result.add(new Symptom(SYMPTOM_BACK_PRESSURE.text(), compMetrics));
       }
     }

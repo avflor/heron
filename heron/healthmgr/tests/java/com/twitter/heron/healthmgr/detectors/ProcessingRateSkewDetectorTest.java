@@ -102,11 +102,11 @@ public class ProcessingRateSkewDetectorTest {
 
     assertEquals(2, symptoms.size());
     for (Symptom symptom : symptoms) {
-      if (symptom.getComponent().getName().equals("bolt-1")) {
+      if (symptom.getComponent().getComponentName().equals("bolt-1")) {
         compMetrics1 = null;
-      } else if (symptom.getComponent().getName().equals("bolt-2")) {
+      } else if (symptom.getComponent().getComponentName().equals("bolt-2")) {
         compMetrics2 = null;
-      } else if (symptom.getComponent().getName().equals("bolt-3")) {
+      } else if (symptom.getComponent().getComponentName().equals("bolt-3")) {
         compMetrics3 = null;
       }
     }

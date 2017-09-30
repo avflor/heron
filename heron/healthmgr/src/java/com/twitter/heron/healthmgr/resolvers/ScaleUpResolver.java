@@ -88,7 +88,7 @@ public class ScaleUpResolver implements IResolver {
       ComponentMetrics bpComponent = bpSymptom.getComponent();
       int newParallelism = computeScaleUpFactor(bpComponent);
       Map<String, Integer> changeRequest = new HashMap<>();
-      changeRequest.put(bpComponent.getName(), newParallelism);
+      changeRequest.put(bpComponent.getComponentName(), newParallelism);
 
       PackingPlan currentPackingPlan = packingPlanProvider.get();
       PackingPlan newPlan = buildNewPackingPlan(changeRequest, currentPackingPlan);
@@ -125,7 +125,7 @@ public class ScaleUpResolver implements IResolver {
   @VisibleForTesting
   int computeScaleUpFactor(ComponentMetrics componentMetrics) {
     double totalCompBpTime = 0;
-    String compName = componentMetrics.getName();
+    String compName = componentMetrics.getComponentName();
     for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
       double instanceBp = instanceMetrics.getMetricValueSum(METRIC_BACK_PRESSURE.text());
       LOG.info(String.format("Instance:%s, bpTime:%.0f", instanceMetrics.getName(), instanceBp));

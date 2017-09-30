@@ -77,8 +77,8 @@ public class ComponentMetricsHelper {
     }
   }
 
-  public MetricsStats computeMinMaxStats(String metric) {
-    return componentMetrics.computeMinMaxStats(metric);
+  public MetricsStats computeStats(String metric) {
+    return componentMetrics.computeStats(metric);
   }
 
   public double getTotalBackpressure() {

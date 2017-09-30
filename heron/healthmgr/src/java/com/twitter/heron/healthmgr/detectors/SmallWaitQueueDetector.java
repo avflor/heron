@@ -60,11 +60,11 @@ public class SmallWaitQueueDetector implements IDetector {
     Map<String, ComponentMetrics> bufferSizes = pendingBufferSensor.get();
     for (ComponentMetrics compMetrics : bufferSizes.values()) {
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
-      MetricsStats stats = compStats.computeMinMaxStats(BaseSensor.MetricName.
+      MetricsStats stats = compStats.computeStats(BaseSensor.MetricName.
           METRIC_BUFFER_SIZE.text());
       if (stats.getMetricMax() <= threshold) {
         LOG.info(String.format("Detected small wait queues for %s, largest queue is %f",
-            compMetrics.getName(), stats.getMetricMax()));
+            compMetrics.getComponentName(), stats.getMetricMax()));
         result.add(new Symptom(SYMPTOM_SMALL_WAIT_Q.text(), compMetrics));
       }
     }
