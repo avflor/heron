@@ -18,12 +18,12 @@ package com.twitter.heron.healthmgr.sensors;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-
 import javax.inject.Inject;
 
 import com.microsoft.dhalion.api.MetricsProvider;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.InstanceMetrics;
+import com.microsoft.dhalion.metrics.MetricsStats;
 
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.PackingPlanProvider;
@@ -67,33 +67,39 @@ public class BackPressureSensor extends BaseSensor {
       Duration duration = getDuration();
       Map<String, InstanceMetrics> instanceMetrics = new HashMap<>();
       for (String boltInstanceName : boltInstanceNames) {
-        String metric = getMetricName() + boltInstanceName;
-        Map<String, ComponentMetrics> stmgrResult = metricsProvider.getComponentMetrics(
-            metric, duration, COMPONENT_STMGR);
-
-        HashMap<String, InstanceMetrics> streamManagerResult =
-            stmgrResult.get(COMPONENT_STMGR).getMetrics();
-
-        // since a bolt instance belongs to one stream manager, expect just one metrics
-        // manager instance in the result
-        InstanceMetrics stmgrInstanceResult = streamManagerResult.values().iterator().next();
-
-        double averageBp = stmgrInstanceResult.getMetricValueSum(metric) / duration.getSeconds();
-
-        // The maximum value of averageBp should be 1000, i.e. 1000 millis of BP per second. Due to
-        // a bug in Heron (Issue: 1753), this value could be higher in some cases. The following
-        // check partially corrects the reported BP value
-        averageBp = averageBp > 1000 ? 1000 : averageBp;
+        double averageBp = getAverageBp(duration, boltInstanceName);
         InstanceMetrics boltInstanceMetric
             = new InstanceMetrics(boltInstanceName, getMetricName(), averageBp);
 
         instanceMetrics.put(boltInstanceName, boltInstanceMetric);
-      }
 
+      }
       ComponentMetrics componentMetrics = new ComponentMetrics(boltComponent, instanceMetrics);
       result.put(boltComponent, componentMetrics);
     }
 
     return result;
+  }
+
+
+  private double getAverageBp(Duration duration, String boltInstanceName) {
+    String metric = getMetricName() + boltInstanceName;
+    Map<String, ComponentMetrics> stmgrResult = metricsProvider.getComponentMetrics(
+        metric, duration, COMPONENT_STMGR);
+
+    HashMap<String, InstanceMetrics> streamManagerResult =
+        stmgrResult.get(COMPONENT_STMGR).getMetrics();
+
+    // since a bolt instance belongs to one stream manager, expect just one metrics
+    // manager instance in the result
+    InstanceMetrics stmgrInstanceResult = streamManagerResult.values().iterator().next();
+
+    double averageBp = stmgrInstanceResult.getMetricValueSum(metric) / duration.getSeconds();
+
+    // The maximum value of averageBp should be 1000, i.e. 1000 millis of BP per second. Due to
+    // a bug in Heron (Issue: 1753), this value could be higher in some cases. The following
+    // check partially corrects the reported BP value
+    averageBp = averageBp > 1000 ? 1000 : averageBp;
+    return averageBp;
   }
 }

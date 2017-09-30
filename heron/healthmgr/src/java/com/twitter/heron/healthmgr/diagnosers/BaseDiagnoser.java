@@ -22,6 +22,7 @@ import java.util.Map;
 import com.microsoft.dhalion.api.IDiagnoser;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
+import com.microsoft.dhalion.metrics.MetricsStats;
 
 import com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName;
 
@@ -63,6 +64,14 @@ public abstract class BaseDiagnoser implements IDiagnoser {
     return getFilteredComponents(symptoms, SYMPTOM_UNSATURATEDCOMP_LOWCONF);
   }
 
+  protected Map<String, MetricsStats> getHighConfUnsaturatedComponentStats(List<Symptom> symptoms) {
+    return getFilteredStats(symptoms, SYMPTOM_UNSATURATEDCOMP_HIGHCONF);
+  }
+
+  protected Map<String, MetricsStats> getLowConfUnsaturatedComponentStats(List<Symptom> symptoms) {
+    return getFilteredStats(symptoms, SYMPTOM_UNSATURATEDCOMP_LOWCONF);
+  }
+
   protected Map<String, ComponentMetrics> getGrowingWaitQueueComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_GROWING_WAIT_Q);
   }
@@ -70,8 +79,18 @@ public abstract class BaseDiagnoser implements IDiagnoser {
   private List<Symptom> getFilteredSymptoms(List<Symptom> symptoms, SymptomName type) {
     List<Symptom> result = new ArrayList<>();
     for (Symptom symptom : symptoms) {
-      if (symptom.getName().equals(type.text())) {
+      if (symptom.getSymptomName().equals(type.text())) {
         result.add(symptom);
+      }
+    }
+    return result;
+  }
+
+  private Map<String, MetricsStats> getFilteredStats(List<Symptom> symptoms, SymptomName type) {
+    Map<String, MetricsStats> result = new HashMap<>();
+    for (Symptom symptom : symptoms) {
+      if (symptom.getSymptomName().equals(type.text())) {
+        result.putAll(symptom.getStats());
       }
     }
     return result;
@@ -81,7 +100,7 @@ public abstract class BaseDiagnoser implements IDiagnoser {
                                                               SymptomName type) {
     Map<String, ComponentMetrics> result = new HashMap<>();
     for (Symptom symptom : symptoms) {
-      if (symptom.getName().equals(type.text())) {
+      if (symptom.getSymptomName().equals(type.text())) {
         result.putAll(symptom.getComponents());
       }
     }

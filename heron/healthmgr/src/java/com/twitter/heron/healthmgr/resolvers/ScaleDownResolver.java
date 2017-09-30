@@ -22,14 +22,12 @@ import java.util.logging.Logger;
 import javax.inject.Inject;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Optional;
 import com.microsoft.dhalion.api.IResolver;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.diagnoser.Diagnosis;
 import com.microsoft.dhalion.events.EventManager;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.InstanceMetrics;
-import com.microsoft.dhalion.metrics.StatsCollector;
 import com.microsoft.dhalion.resolver.Action;
 
 import com.twitter.heron.api.generated.TopologyAPI.Topology;
@@ -38,7 +36,6 @@ import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.HealthManagerEvents.TopologyUpdate;
 import com.twitter.heron.healthmgr.common.PackingPlanProvider;
 import com.twitter.heron.healthmgr.common.TopologyProvider;
-import com.twitter.heron.healthmgr.sensors.BaseSensor;
 import com.twitter.heron.proto.scheduler.Scheduler;
 import com.twitter.heron.proto.system.PackingPlans;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
@@ -63,7 +60,6 @@ public class ScaleDownResolver implements IResolver {
   private EventManager eventManager;
   private Config config;
   private int scaleDownConf;
-  private StatsCollector statsCollector;
 
   @Inject
   public ScaleDownResolver(TopologyProvider topologyProvider,
@@ -71,15 +67,13 @@ public class ScaleDownResolver implements IResolver {
                            ISchedulerClient schedulerClient,
                            EventManager eventManager,
                            Config config,
-                           HealthPolicyConfig policyConfig,
-                           StatsCollector statsCollector) {
+                           HealthPolicyConfig policyConfig) {
     this.topologyProvider = topologyProvider;
     this.packingPlanProvider = packingPlanProvider;
     this.schedulerClient = schedulerClient;
     this.eventManager = eventManager;
     this.config = config;
     this.scaleDownConf = (int) policyConfig.getConfig(CONF_SCALE_DOWN, 5);
-    this.statsCollector = statsCollector;
 
   }
 
@@ -104,9 +98,9 @@ public class ScaleDownResolver implements IResolver {
       }
 
       ComponentMetrics ovComponent = overprovisioningSymptom.getComponent();
-      int newParallelism = computeScaleDownFactor(ovComponent, overprovisioningSymptom.getName());
+      int newParallelism = computeScaleDownFactor(ovComponent, overprovisioningSymptom);
       Map<String, Integer> changeRequest = new HashMap<>();
-      changeRequest.put(ovComponent.getName(), newParallelism);
+      changeRequest.put(ovComponent.getComponentName(), newParallelism);
 
       PackingPlan currentPackingPlan = packingPlanProvider.get();
       PackingPlan newPlan = buildNewPackingPlan(changeRequest, currentPackingPlan);
@@ -141,25 +135,26 @@ public class ScaleDownResolver implements IResolver {
   }
 
   @VisibleForTesting
-  int computeScaleDownFactor(ComponentMetrics componentMetrics, String symptomName) {
-
+  int computeScaleDownFactor(ComponentMetrics componentMetrics, Symptom symptom) {
+    String componentName = componentMetrics.getComponentName();
     int parallelism = 0;
-    if (symptomName.equals(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text())) {
-      parallelism = (int) Math.ceil(componentMetrics.getMetrics().size() * (100 -
+    int currentNoInstances = componentMetrics.getMetrics().size();
+    if (symptom.getSymptomName().equals(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text())) {
+      parallelism = (int) Math.ceil(currentNoInstances * (100 -
           scaleDownConf) / 100.0);
-    } else if (symptomName.equals(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text())) {
+    } else if (symptom.getSymptomName().equals(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text())) {
       int currentTotalProcessingRate = 0;
-      double maxProcessingRateObserved = this.statsCollector.getMetricData(BaseSensor
-          .MetricName.METRIC_EXE_COUNT.text(), componentMetrics.getName()).get();
+      double maxProcessingRateObserved = symptom.getStats().get(componentName).getMetricAvg();
       for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
         Double metricValue = instanceMetrics.getMetricValueSum(METRIC_EXE_COUNT.text());
         currentTotalProcessingRate += metricValue;
       }
-      parallelism = (int) Math.ceil(currentTotalProcessingRate / maxProcessingRateObserved);
+      System.out.println(maxProcessingRateObserved + " " + currentTotalProcessingRate);
+      parallelism = (int) Math.ceil(currentTotalProcessingRate/ maxProcessingRateObserved);
     }
 
     LOG.info(String.format("Component's, %s new parallelism is: %d",
-        componentMetrics.getName(), parallelism));
+        componentName, parallelism));
     return parallelism;
   }
 

@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.diagnoser.Diagnosis;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
+import com.microsoft.dhalion.metrics.MetricsStats;
 
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.DIAGNOSIS_OVER_PROVISIONING;
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_OVER_PROVISIONING_SMALLWAITQ;
@@ -35,8 +36,13 @@ public class OverProvisioningDiagnoser extends BaseDiagnoser {
   public Diagnosis diagnose(List<Symptom> symptoms) {
     Map<String, ComponentMetrics> highConfUnsaturatedComponents =
         getHighConfUnsaturatedComponents(symptoms);
+    Map<String, MetricsStats> highConfUnsaturatedComponentsStats =
+        getHighConfUnsaturatedComponentStats(symptoms);
     Map<String, ComponentMetrics> lowConfUnsaturatedComponents =
         getLowConfUnsaturatedComponents(symptoms);
+    Map<String, MetricsStats> lowConfUnsaturatedComponentsStats =
+        getLowConfUnsaturatedComponentStats(symptoms);
+
     Map<String, ComponentMetrics> smallWaitQComponents = getSmallWaitQComponents(symptoms);
     Map<String, ComponentMetrics> growingWaitQueueComponents =
         getGrowingWaitQueueComponents(symptoms);
@@ -46,7 +52,8 @@ public class OverProvisioningDiagnoser extends BaseDiagnoser {
       for (String component : highConfUnsaturatedComponents.keySet()) {
         if (!growingWaitQueueComponents.containsKey(component)) {
           resultSymptom = new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(),
-              highConfUnsaturatedComponents.get(component));
+              highConfUnsaturatedComponents.get(component),
+              highConfUnsaturatedComponentsStats.get(component));
           LOG.info(String.format("OVER_PROVISIONING: %s is unsaturated", component));
           continue;
         }

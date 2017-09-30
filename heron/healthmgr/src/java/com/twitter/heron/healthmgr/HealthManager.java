@@ -19,10 +19,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,8 +33,6 @@ import com.microsoft.dhalion.api.IHealthPolicy;
 import com.microsoft.dhalion.api.ISensor;
 import com.microsoft.dhalion.api.MetricsProvider;
 import com.microsoft.dhalion.events.EventManager;
-import com.microsoft.dhalion.metrics.MetricsCollector;
-import com.microsoft.dhalion.metrics.StatsCollector;
 import com.microsoft.dhalion.policy.PoliciesExecutor;
 
 import org.apache.commons.cli.CommandLine;
@@ -117,30 +112,6 @@ public class HealthManager {
   private List<IHealthPolicy> healthPolicies = new ArrayList<>();
   private HealthPolicyConfigReader policyConfigReader;
 
-  public enum HealthManagerMode {
-    cluster,
-    local
-  }
-
-  private enum CliArgs {
-    CLUSTER("cluster"),
-    ROLE("role"),
-    ENVIRONMENT("environment"),
-    TOPOLOGY_NAME("topology_name"),
-    METRIC_SOURCE_URL("metric_source_url"),
-    METRIC_SOURCE_TYPE("metric_source_type"),
-    HERON_HOME("heron_home"),
-    CONFIG_PATH("config_path"),
-    MODE("mode"),
-    VERBOSE("verbose");
-
-    private String text;
-
-    CliArgs(String name) {
-      this.text = name;
-    }
-  }
-
   public HealthManager(Config config, AbstractModule baseModule) {
     this.config = config;
     this.baseModule = baseModule;
@@ -219,20 +190,6 @@ public class HealthManager {
     LOG.info("Initializing health manager");
     healthManager.initialize();
 
-    LOG.info("Start MetricsCollector");
-
-    StatsCollector statsCollector = new StatsCollector();
-    MetricsCollector metricsCollector = new MetricsCollector(statsCollector, healthManager
-        .findUniqueSensors());
-    ScheduledExecutorService metricsExecutor = Executors.newSingleThreadScheduledExecutor();
-    ScheduledFuture<?> metricsFuture = metricsExecutor.scheduleWithFixedDelay(metricsCollector,1,1,
-        TimeUnit.MINUTES);
-    try {
-      metricsFuture.get();
-    } finally {
-      metricsExecutor.shutdownNow();
-    }
-
     LOG.info("Starting Health Manager");
 
     PoliciesExecutor policyExecutor = new PoliciesExecutor(healthManager.healthPolicies);
@@ -254,69 +211,6 @@ public class HealthManager {
 
   private static String getOptionValue(CommandLine cmd, CliArgs argName, String defaultValue) {
     return cmd.getOptionValue(argName.text, defaultValue);
-  }
-
-  public void initialize() throws ReflectiveOperationException, FileNotFoundException {
-    this.stateMgrAdaptor = createStateMgrAdaptor();
-
-    this.runtime = Config.newBuilder()
-        .put(Key.SCHEDULER_STATE_MANAGER_ADAPTOR, stateMgrAdaptor)
-        .put(Key.TOPOLOGY_NAME, Context.topologyName(config))
-        .build();
-
-    this.schedulerClient = createSchedulerClient();
-
-    this.policyConfigReader = createPolicyConfigReader();
-
-    injector = Guice.createInjector(baseModule);
-    AbstractModule commonModule = buildCommonConfigModule();
-    injector = injector.createChildInjector(commonModule);
-
-    initializePolicies();
-  }
-
-  @SuppressWarnings("unchecked") // we don't know what T is until runtime
-  private void initializePolicies() throws ClassNotFoundException {
-    List<String> policyIds = policyConfigReader.getPolicyIds();
-    for (String policyId : policyIds) {
-      Map<String, Object> policyConfigMap = policyConfigReader.getPolicyConfig(policyId);
-      HealthPolicyConfig policyConfig = new HealthPolicyConfig(policyConfigMap);
-
-      String policyClassName = policyConfig.getPolicyClass();
-      LOG.info(String.format("Initializing %s with class %s", policyId, policyClassName));
-      Class<IHealthPolicy> policyClass
-          = (Class<IHealthPolicy>) this.getClass().getClassLoader().loadClass(policyClassName);
-
-      AbstractModule module = constructPolicySpecificModule(policyConfig);
-      IHealthPolicy policy = injector.createChildInjector(module).getInstance(policyClass);
-
-      healthPolicies.add(policy);
-    }
-  }
-
-  private List<ISensor> findUniqueSensors(){
-    List<ISensor> uniqueSensors = new ArrayList<>();
-    List<String> sensorMetrics = new ArrayList<>();
-    for (int i = 0; i < healthPolicies.size(); i++){
-      List<ISensor> currentSensors = healthPolicies.get(i).getSensors();
-      for(int j = 0; j < currentSensors.size(); j++){
-        String metricName = currentSensors.get(j).getMetricName();
-        if(!sensorMetrics.contains(metricName)){
-          sensorMetrics.add(metricName);
-          uniqueSensors.add(currentSensors.get(j));
-        }
-      }
-    }
-    return uniqueSensors;
-  }
-
-  @VisibleForTesting
-  HealthPolicyConfigReader createPolicyConfigReader() throws FileNotFoundException {
-    String policyConfigFile
-        = Paths.get(Context.heronConf(config), PolicyConfigKey.CONF_FILE_NAME.key()).toString();
-    HealthPolicyConfigReader configReader = new HealthPolicyConfigReader(policyConfigFile);
-    configReader.loadConfig();
-    return configReader;
   }
 
   @VisibleForTesting
@@ -341,40 +235,6 @@ public class HealthManager {
         bind(MetricsProvider.class).to(metricsProviderClass).in(Singleton.class);
       }
     };
-  }
-
-  private AbstractModule buildCommonConfigModule() {
-    return new AbstractModule() {
-      @Override
-      protected void configure() {
-        bind(Config.class).toInstance(config);
-        bind(EventManager.class).in(Singleton.class);
-        bind(ISchedulerClient.class).toInstance(schedulerClient);
-        bind(SchedulerStateManagerAdaptor.class).toInstance(stateMgrAdaptor);
-        bind(PackingPlanProvider.class).in(Singleton.class);
-      }
-    };
-  }
-
-  private AbstractModule constructPolicySpecificModule(final HealthPolicyConfig policyConfig) {
-    return new AbstractModule() {
-      @Override
-      protected void configure() {
-        bind(HealthPolicyConfig.class).toInstance(policyConfig);
-      }
-    };
-  }
-
-  @VisibleForTesting
-  SchedulerStateManagerAdaptor createStateMgrAdaptor() throws ReflectiveOperationException {
-    String stateMgrClass = Context.stateManagerClass(config);
-    IStateManager stateMgr = ReflectionUtils.newInstance(stateMgrClass);
-    stateMgr.initialize(config);
-    return new SchedulerStateManagerAdaptor(stateMgr, 5000);
-  }
-
-  private ISchedulerClient createSchedulerClient() {
-    return new SchedulerClientFactory(config, runtime).getSchedulerClient();
   }
 
   /**
@@ -513,8 +373,113 @@ public class HealthManager {
     return options;
   }
 
+  public void initialize() throws ReflectiveOperationException, FileNotFoundException {
+    this.stateMgrAdaptor = createStateMgrAdaptor();
+
+    this.runtime = Config.newBuilder()
+        .put(Key.SCHEDULER_STATE_MANAGER_ADAPTOR, stateMgrAdaptor)
+        .put(Key.TOPOLOGY_NAME, Context.topologyName(config))
+        .build();
+
+    this.schedulerClient = createSchedulerClient();
+
+    this.policyConfigReader = createPolicyConfigReader();
+
+    injector = Guice.createInjector(baseModule);
+    AbstractModule commonModule = buildCommonConfigModule();
+    injector = injector.createChildInjector(commonModule);
+
+    initializePolicies();
+  }
+
+  @SuppressWarnings("unchecked") // we don't know what T is until runtime
+  private void initializePolicies() throws ClassNotFoundException {
+    List<String> policyIds = policyConfigReader.getPolicyIds();
+    for (String policyId : policyIds) {
+      Map<String, Object> policyConfigMap = policyConfigReader.getPolicyConfig(policyId);
+      HealthPolicyConfig policyConfig = new HealthPolicyConfig(policyConfigMap);
+
+      String policyClassName = policyConfig.getPolicyClass();
+      LOG.info(String.format("Initializing %s with class %s", policyId, policyClassName));
+      Class<IHealthPolicy> policyClass
+          = (Class<IHealthPolicy>) this.getClass().getClassLoader().loadClass(policyClassName);
+
+      AbstractModule module = constructPolicySpecificModule(policyConfig);
+      IHealthPolicy policy = injector.createChildInjector(module).getInstance(policyClass);
+
+      healthPolicies.add(policy);
+    }
+  }
+
+  @VisibleForTesting
+  HealthPolicyConfigReader createPolicyConfigReader() throws FileNotFoundException {
+    String policyConfigFile
+        = Paths.get(Context.heronConf(config), PolicyConfigKey.CONF_FILE_NAME.key()).toString();
+    HealthPolicyConfigReader configReader = new HealthPolicyConfigReader(policyConfigFile);
+    configReader.loadConfig();
+    return configReader;
+  }
+
+  private AbstractModule buildCommonConfigModule() {
+    return new AbstractModule() {
+      @Override
+      protected void configure() {
+        bind(Config.class).toInstance(config);
+        bind(EventManager.class).in(Singleton.class);
+        bind(ISchedulerClient.class).toInstance(schedulerClient);
+        bind(SchedulerStateManagerAdaptor.class).toInstance(stateMgrAdaptor);
+        bind(PackingPlanProvider.class).in(Singleton.class);
+      }
+    };
+  }
+
+  private AbstractModule constructPolicySpecificModule(final HealthPolicyConfig policyConfig) {
+    return new AbstractModule() {
+      @Override
+      protected void configure() {
+        bind(HealthPolicyConfig.class).toInstance(policyConfig);
+      }
+    };
+  }
+
+  @VisibleForTesting
+  SchedulerStateManagerAdaptor createStateMgrAdaptor() throws ReflectiveOperationException {
+    String stateMgrClass = Context.stateManagerClass(config);
+    IStateManager stateMgr = ReflectionUtils.newInstance(stateMgrClass);
+    stateMgr.initialize(config);
+    return new SchedulerStateManagerAdaptor(stateMgr, 5000);
+  }
+
+  private ISchedulerClient createSchedulerClient() {
+    return new SchedulerClientFactory(config, runtime).getSchedulerClient();
+  }
+
   @VisibleForTesting
   List<IHealthPolicy> getHealthPolicies() {
     return healthPolicies;
+  }
+
+  public enum HealthManagerMode {
+    cluster,
+    local
+  }
+
+  private enum CliArgs {
+    CLUSTER("cluster"),
+    ROLE("role"),
+    ENVIRONMENT("environment"),
+    TOPOLOGY_NAME("topology_name"),
+    METRIC_SOURCE_URL("metric_source_url"),
+    METRIC_SOURCE_TYPE("metric_source_type"),
+    HERON_HOME("heron_home"),
+    CONFIG_PATH("config_path"),
+    MODE("mode"),
+    VERBOSE("verbose");
+
+    private String text;
+
+    CliArgs(String name) {
+      this.text = name;
+    }
   }
 }

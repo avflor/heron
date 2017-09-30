@@ -21,13 +21,13 @@ import java.util.Map;
 import java.util.logging.Logger;
 import javax.inject.Inject;
 
-import com.google.common.base.Optional;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.MetricsStats;
-import com.microsoft.dhalion.metrics.StatsCollector;
 
+import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.ComponentMetricsHelper;
+import com.twitter.heron.healthmgr.sensors.BackPressureSensor;
 import com.twitter.heron.healthmgr.sensors.BaseSensor;
 import com.twitter.heron.healthmgr.sensors.ExecuteCountSensor;
 
@@ -36,16 +36,19 @@ import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYM
 
 
 public class UnsaturatedComponentDetector extends BaseDetector {
-
+  static final String CONF_NOISE_FILTER = "BackPressureDetector.noiseFilterMillis";
   private static final Logger LOG = Logger.getLogger(UnsaturatedComponentDetector.class.getName());
   private final ExecuteCountSensor executeCountSensor;
-  private StatsCollector statsCollector;
+  private final BackPressureSensor backPressureSensor;
+  private final int noiseFilterMillis;
 
   @Inject
   UnsaturatedComponentDetector(ExecuteCountSensor executeCountSensor,
-                               StatsCollector statsCollector) {
+                               BackPressureSensor backPressureSensor,
+                               HealthPolicyConfig policyConfig) {
     this.executeCountSensor = executeCountSensor;
-    this.statsCollector = statsCollector;
+    this.backPressureSensor = backPressureSensor;
+    noiseFilterMillis = (int) policyConfig.getConfig(CONF_NOISE_FILTER, 20);
   }
 
   /**
@@ -59,40 +62,41 @@ public class UnsaturatedComponentDetector extends BaseDetector {
     ArrayList<Symptom> result = new ArrayList<>();
 
     Map<String, ComponentMetrics> processingRates = executeCountSensor.get();
-    for (ComponentMetrics compMetrics : processingRates.values()) {
+    Map<String, ComponentMetrics> backpressureMetrics = backPressureSensor.get();
+    for (ComponentMetrics compMetrics : backpressureMetrics.values()) {
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
-      MetricsStats stats = compStats.computeMinMaxStats(BaseSensor.MetricName.
-          METRIC_EXE_COUNT.text());
-      Optional<Double> maxProcessingRateObserved = this.statsCollector.getMetricData(BaseSensor
-          .MetricName.METRIC_EXE_COUNT.text(), compMetrics.getName());
-      Optional<Double> backpressureObserved = this.statsCollector.getMetricData(BaseSensor
-          .MetricName.METRIC_BACK_PRESSURE.text(), compMetrics.getName());
-
-      if (!maxProcessingRateObserved.isPresent() || !backpressureObserved.isPresent()) {
+      compStats.computeBpStats();
+      if (compStats.getTotalBackpressure() > noiseFilterMillis) {
         return result;
       }
+    }
 
-      if (backpressureObserved.get() > 0 && stats.getMetricMax() < maxProcessingRateObserved.get
-          ()) {
-        LOG.info(String.format("Detected unsaturated component with high confidence %s: current "
-                + "maximum processing " + "rate is %f, previous observed maximum rate is %f",
-            compMetrics.getName(), stats.getMetricMax(), maxProcessingRateObserved.get()));
-
-        result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics));
-      } else if (backpressureObserved.get() <= 0) {
-        if (stats.getMetricMax() <= 0.8 * maxProcessingRateObserved.get()) {
-          LOG.info(String.format("Detected unsaturated component with high confidence %s: current "
-                  + "maximum processing " + "rate is %f, previous observed maximum rate is %f",
-              compMetrics.getName(), stats.getMetricMax(), maxProcessingRateObserved.get()));
-          result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics));
-        } else if (stats.getMetricMax() > 0.8 * maxProcessingRateObserved.get()
-            && stats.getMetricMax() <= maxProcessingRateObserved.get()) {
-          LOG.info(String.format("Detected unsaturated component with low confidence %s: current "
-                  + "maximum processing " + "rate is %f, previous observed maximum rate is %f",
-              compMetrics.getName(), stats.getMetricMax(), maxProcessingRateObserved.get()));
-          result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF.text(), compMetrics));
-        }
+    for (ComponentMetrics compMetrics : processingRates.values()) {
+      ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
+      MetricsStats currentStats = compStats.computeStats(BaseSensor.MetricName.
+          METRIC_EXE_COUNT.text());
+      MetricsStats processingRateStats = executeCountSensor.getStats(compMetrics.getComponentName());
+      if (processingRateStats == null) {
+        return result;
       }
+      if (currentStats.getMetricAvg() <= 0.8 * processingRateStats.getMetricAvg()) {
+        LOG.info(String.format("Detected unsaturated component with high confidence %s: current "
+                + "average processing " + "rate is %f, previous observed maximum average rate is "
+            + "%f", compMetrics.getComponentName(), currentStats.getMetricAvg(),
+            processingRateStats.getMetricAvg()));
+        result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics,
+            processingRateStats));
+      } else if (currentStats.getMetricAvg() > 0.8 * processingRateStats.getMetricAvg() &&
+          currentStats.getMetricAvg() <= processingRateStats.getMetricAvg()) {
+        LOG.info(String.format("Detected unsaturated component with low confidence %s: current "
+                + "average processing " + "rate is %f, previous observed maximum average rate is "
+            + "%f",
+            compMetrics.getComponentName(), currentStats.getMetricAvg(),
+            processingRateStats.getMetricAvg()));
+        result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF.text(), compMetrics,
+            processingRateStats));
+      }
+
     }
     return result;
   }
