@@ -45,7 +45,7 @@ public class ComponentMetricsHelper {
   }
 
   public void computeBpStats() {
-    for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
+    for (InstanceMetrics instanceMetrics : componentMetrics.getInstanceData().values()) {
       double bpValue = instanceMetrics.getMetricValueSum(METRIC_BACK_PRESSURE.text());
       if (bpValue > 0) {
         boltsWithBackpressure.add(instanceMetrics);
@@ -55,7 +55,7 @@ public class ComponentMetricsHelper {
   }
 
   public void computeBufferSizeTrend() {
-    for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
+    for (InstanceMetrics instanceMetrics : componentMetrics.getInstanceData().values()) {
       Map<Instant, Double> bufferMetrics
           = instanceMetrics.getMetrics().get(METRIC_BUFFER_SIZE.text());
       if (bufferMetrics == null || bufferMetrics.size() < 3) {

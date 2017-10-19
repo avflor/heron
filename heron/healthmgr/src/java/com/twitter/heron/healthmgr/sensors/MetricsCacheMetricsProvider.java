@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import javax.inject.Inject;
 import javax.inject.Named;
 
@@ -97,18 +96,18 @@ public class MetricsCacheMetricsProvider implements MetricsProvider {
     }
 
     // convert heron.protobuf.taskMetrics to dhalion.InstanceMetrics
-    for (TaskMetric tm :response.getMetricList()) {
+    for (TaskMetric tm : response.getMetricList()) {
       String instanceId = tm.getInstanceId();
       InstanceMetrics instanceMetrics = new InstanceMetrics(instanceId);
 
-      for (IndividualMetric im: tm.getMetricList()) {
+      for (IndividualMetric im : tm.getMetricList()) {
         String metricName = im.getName();
         Map<Instant, Double> values = new HashMap<>();
 
-        for (IntervalValue iv: im.getIntervalValuesList()) {
+        for (IntervalValue iv : im.getIntervalValuesList()) {
           MetricInterval mi = iv.getInterval();
           String value = iv.getValue();
-          values.put(Instant.ofEpochSecond(mi.getStart()),  Double.parseDouble(value));
+          values.put(Instant.ofEpochSecond(mi.getStart()), Double.parseDouble(value));
         }
 
         if (!values.isEmpty()) {
@@ -129,9 +128,9 @@ public class MetricsCacheMetricsProvider implements MetricsProvider {
         .setComponentName(component)
         .setExplicitInterval(
             MetricInterval.newBuilder()
-            .setStart(start.getEpochSecond())
-            .setEnd(start.plus(duration).getEpochSecond())
-            .build())
+                .setStart(start.getEpochSecond())
+                .setEnd(start.plus(duration).getEpochSecond())
+                .build())
         .addMetric(metric)
         .build();
     LOG.log(Level.FINE, "MetricsCache Query request: {0}", request);

@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
 import javax.inject.Inject;
 
 import com.microsoft.dhalion.api.MetricsProvider;
@@ -36,22 +35,23 @@ import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_B
 public class BufferSizeSensor extends BaseSensor {
   private final MetricsProvider metricsProvider;
   private final PackingPlanProvider packingPlanProvider;
-  private final TopologyProvider topologyProvider;
 
   @Inject
   public BufferSizeSensor(HealthPolicyConfig policyConfig,
                           PackingPlanProvider packingPlanProvider,
                           TopologyProvider topologyProvider,
                           MetricsProvider metricsProvider) {
-    super(policyConfig, METRIC_BUFFER_SIZE.text(), BufferSizeSensor.class.getSimpleName());
+    super(topologyProvider, policyConfig, METRIC_BUFFER_SIZE.text(),
+        BufferSizeSensor.class
+            .getSimpleName());
     this.packingPlanProvider = packingPlanProvider;
-    this.topologyProvider = topologyProvider;
     this.metricsProvider = metricsProvider;
   }
 
   @Override
-  public Map<String, ComponentMetrics> get() {
-    return get(topologyProvider.getBoltNames());
+  public Map<String, ComponentMetrics> fetchMetrics() {
+    this.metrics = readMetrics(topologyProvider.getBoltNames());
+    return this.metrics;
   }
 
   /**
@@ -59,7 +59,7 @@ public class BufferSizeSensor extends BaseSensor {
    *
    * @return buffer size
    */
-  public Map<String, ComponentMetrics> get(String... desiredBoltNames) {
+  public Map<String, ComponentMetrics> readMetrics(String... desiredBoltNames) {
     Map<String, ComponentMetrics> result = new HashMap<>();
 
     Set<String> boltNameFilter = new HashSet<>();
@@ -85,7 +85,7 @@ public class BufferSizeSensor extends BaseSensor {
             COMPONENT_STMGR);
 
         HashMap<String, InstanceMetrics> streamManagerResult =
-            stmgrResult.get(COMPONENT_STMGR).getMetrics();
+            stmgrResult.get(COMPONENT_STMGR).getInstanceData();
 
         // since a bolt instance belongs to one stream manager, expect just one metrics
         // manager instance in the result

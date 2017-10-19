@@ -18,6 +18,7 @@ package com.twitter.heron.healthmgr.detectors;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
 import javax.inject.Inject;
 
@@ -75,26 +76,27 @@ public class UnsaturatedComponentDetector extends BaseDetector {
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       MetricsStats currentStats = compStats.computeStats(BaseSensor.MetricName.
           METRIC_EXE_COUNT.text());
-      MetricsStats processingRateStats = executeCountSensor.getStats(compMetrics.getComponentName());
-      if (processingRateStats == null) {
+      Optional<MetricsStats> processingRateStats = executeCountSensor.getStats(compMetrics
+          .getComponentName());
+      if (!processingRateStats.isPresent()) {
         return result;
       }
-      if (currentStats.getMetricAvg() <= 0.8 * processingRateStats.getMetricAvg()) {
+      if (currentStats.getMetricAvg() <= 0.8 * processingRateStats.get().getMetricAvg()) {
         LOG.info(String.format("Detected unsaturated component with high confidence %s: current "
                 + "average processing " + "rate is %f, previous observed maximum average rate is "
-            + "%f", compMetrics.getComponentName(), currentStats.getMetricAvg(),
-            processingRateStats.getMetricAvg()));
+                + "%f", compMetrics.getComponentName(), currentStats.getMetricAvg(),
+            processingRateStats.get().getMetricAvg()));
         result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics,
-            processingRateStats));
-      } else if (currentStats.getMetricAvg() > 0.8 * processingRateStats.getMetricAvg() &&
-          currentStats.getMetricAvg() <= processingRateStats.getMetricAvg()) {
+            processingRateStats.get()));
+      } else if (currentStats.getMetricAvg() > 0.8 * processingRateStats.get().getMetricAvg() &&
+          currentStats.getMetricAvg() <= processingRateStats.get().getMetricAvg()) {
         LOG.info(String.format("Detected unsaturated component with low confidence %s: current "
                 + "average processing " + "rate is %f, previous observed maximum average rate is "
-            + "%f",
+                + "%f",
             compMetrics.getComponentName(), currentStats.getMetricAvg(),
-            processingRateStats.getMetricAvg()));
+            processingRateStats.get().getMetricAvg()));
         result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF.text(), compMetrics,
-            processingRateStats));
+            processingRateStats.get()));
       }
 
     }

@@ -33,6 +33,8 @@ import static org.mockito.Mockito.when;
 public class BackPressureSensorTest {
   @Test
   public void providesBackPressureMetricForBolts() {
+
+
     TopologyProvider topologyProvider = mock(TopologyProvider.class);
     when(topologyProvider.getBoltNames()).thenReturn(new String[]{"bolt-1", "bolt-2"});
 
@@ -56,20 +58,21 @@ public class BackPressureSensorTest {
           boltId.length() * DEFAULT_METRIC_DURATION.getSeconds());
     }
 
+
     BackPressureSensor backPressureSensor =
         new BackPressureSensor(packingPlanProvider, topologyProvider, null, metricsProvider);
 
-    Map<String, ComponentMetrics> componentMetrics = backPressureSensor.get();
+    Map<String, ComponentMetrics> componentMetrics = backPressureSensor.fetchMetrics();
     assertEquals(2, componentMetrics.size());
 
-    assertEquals(1, componentMetrics.get("bolt-1").getMetrics().size());
-    assertEquals(boltIds[0].length(), componentMetrics.get("bolt-1").getMetrics(boltIds[0])
+    assertEquals(1, componentMetrics.get("bolt-1").getInstanceData().size());
+    assertEquals(boltIds[0].length(), componentMetrics.get("bolt-1").getInstanceData(boltIds[0])
         .getMetricValueSum(MetricName.METRIC_BACK_PRESSURE.text()).intValue());
 
-    assertEquals(2, componentMetrics.get("bolt-2").getMetrics().size());
-    assertEquals(boltIds[1].length(), componentMetrics.get("bolt-2").getMetrics(boltIds[1])
+    assertEquals(2, componentMetrics.get("bolt-2").getInstanceData().size());
+    assertEquals(boltIds[1].length(), componentMetrics.get("bolt-2").getInstanceData(boltIds[1])
         .getMetricValueSum(MetricName.METRIC_BACK_PRESSURE.text()).intValue());
-    assertEquals(boltIds[2].length(), componentMetrics.get("bolt-2").getMetrics(boltIds[2])
+    assertEquals(boltIds[2].length(), componentMetrics.get("bolt-2").getInstanceData(boltIds[2])
         .getMetricValueSum(MetricName.METRIC_BACK_PRESSURE.text()).intValue());
   }
 }

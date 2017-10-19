@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
 public class ExecuteCountSensorTest {
   @Test
   public void providesBoltExecutionCountMetrics() {
+
     TopologyProvider topologyProvider = mock(TopologyProvider.class);
     when(topologyProvider.getBoltNames()).thenReturn(new String[]{"bolt-1", "bolt-2"});
 
@@ -57,19 +58,20 @@ public class ExecuteCountSensorTest {
 
     ExecuteCountSensor executeCountSensor
         = new ExecuteCountSensor(topologyProvider, null, metricsProvider);
-    Map<String, ComponentMetrics> componentMetrics = executeCountSensor.get();
+
+    Map<String, ComponentMetrics> componentMetrics = executeCountSensor.fetchMetrics();
     assertEquals(2, componentMetrics.size());
     assertEquals(123, componentMetrics.get("bolt-1")
-        .getMetrics("container_1_bolt-1_1")
+        .getInstanceData("container_1_bolt-1_1")
         .getMetricValueSum(METRIC_EXE_COUNT.text()).intValue());
     assertEquals(345, componentMetrics.get("bolt-1")
-        .getMetrics("container_1_bolt-1_2")
+        .getInstanceData("container_1_bolt-1_2")
         .getMetricValueSum(METRIC_EXE_COUNT.text()).intValue());
     assertEquals(321, componentMetrics.get("bolt-2")
-        .getMetrics("container_1_bolt-2_3")
+        .getInstanceData("container_1_bolt-2_3")
         .getMetricValueSum(METRIC_EXE_COUNT.text()).intValue());
     assertEquals(543, componentMetrics.get("bolt-2")
-        .getMetrics("container_1_bolt-2_4")
+        .getInstanceData("container_1_bolt-2_4")
         .getMetricValueSum(METRIC_EXE_COUNT.text()).intValue());
   }
 

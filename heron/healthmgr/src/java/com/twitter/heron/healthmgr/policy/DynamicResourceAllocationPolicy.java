@@ -43,6 +43,9 @@ import com.twitter.heron.healthmgr.diagnosers.SlowInstanceDiagnoser;
 import com.twitter.heron.healthmgr.diagnosers.UnderProvisioningDiagnoser;
 import com.twitter.heron.healthmgr.resolvers.ScaleDownResolver;
 import com.twitter.heron.healthmgr.resolvers.ScaleUpResolver;
+import com.twitter.heron.healthmgr.sensors.BackPressureSensor;
+import com.twitter.heron.healthmgr.sensors.BufferSizeSensor;
+import com.twitter.heron.healthmgr.sensors.ExecuteCountSensor;
 
 import static com.twitter.heron.healthmgr.HealthPolicyConfigReader.PolicyConfigKey.HEALTH_POLICY_INTERVAL;
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.DIAGNOSIS_DATA_SKEW;
@@ -65,6 +68,9 @@ public class DynamicResourceAllocationPolicy extends HealthPolicyImpl
   @Inject
   DynamicResourceAllocationPolicy(HealthPolicyConfig policyConfig,
                                   EventManager eventManager,
+                                  BackPressureSensor backPressureSensor,
+                                  BufferSizeSensor bufferSizeSensor,
+                                  ExecuteCountSensor executeCountSensor,
                                   BackPressureDetector backPressureDetector,
                                   SmallWaitQueueDetector smallWaitQueueDetector,
                                   UnsaturatedComponentDetector unsaturatedComponentDetector,
@@ -80,6 +86,7 @@ public class DynamicResourceAllocationPolicy extends HealthPolicyImpl
     this.scaleUpResolver = scaleUpResolver;
     this.scaleDownResolver = scaleDownResolver;
 
+    registerSensors(backPressureSensor,bufferSizeSensor,executeCountSensor);
     registerDetectors(backPressureDetector, smallWaitQueueDetector, unsaturatedComponentDetector,
         waitQueueDisparityDetector, dataSkewDetector);
     registerDiagnosers(underProvisioningDiagnoser, overProvisioningDiagnoser,

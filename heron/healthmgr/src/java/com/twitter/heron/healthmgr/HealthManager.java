@@ -30,7 +30,6 @@ import com.google.inject.Injector;
 import com.google.inject.Singleton;
 import com.google.inject.name.Names;
 import com.microsoft.dhalion.api.IHealthPolicy;
-import com.microsoft.dhalion.api.ISensor;
 import com.microsoft.dhalion.api.MetricsProvider;
 import com.microsoft.dhalion.events.EventManager;
 import com.microsoft.dhalion.policy.PoliciesExecutor;

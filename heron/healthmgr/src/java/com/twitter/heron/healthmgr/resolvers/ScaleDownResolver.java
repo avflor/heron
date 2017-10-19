@@ -138,14 +138,14 @@ public class ScaleDownResolver implements IResolver {
   int computeScaleDownFactor(ComponentMetrics componentMetrics, Symptom symptom) {
     String componentName = componentMetrics.getComponentName();
     int parallelism = 0;
-    int currentNoInstances = componentMetrics.getMetrics().size();
+    int currentNoInstances = componentMetrics.getInstanceData().size();
     if (symptom.getSymptomName().equals(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text())) {
       parallelism = (int) Math.ceil(currentNoInstances * (100 -
           scaleDownConf) / 100.0);
     } else if (symptom.getSymptomName().equals(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text())) {
       int currentTotalProcessingRate = 0;
       double maxProcessingRateObserved = symptom.getStats().get(componentName).getMetricAvg();
-      for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
+      for (InstanceMetrics instanceMetrics : componentMetrics.getInstanceData().values()) {
         Double metricValue = instanceMetrics.getMetricValueSum(METRIC_EXE_COUNT.text());
         currentTotalProcessingRate += metricValue;
       }

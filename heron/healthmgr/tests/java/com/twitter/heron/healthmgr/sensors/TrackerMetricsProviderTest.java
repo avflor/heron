@@ -53,9 +53,9 @@ public class TrackerMetricsProviderTest {
 
     assertEquals(1, metrics.size());
     assertNotNull(metrics.get(comp));
-    assertEquals(2, metrics.get(comp).getMetrics().size());
+    assertEquals(2, metrics.get(comp).getInstanceData().size());
 
-    HashMap<String, InstanceMetrics> componentMetrics = metrics.get(comp).getMetrics();
+    HashMap<String, InstanceMetrics> componentMetrics = metrics.get(comp).getInstanceData();
     assertEquals(104,
         componentMetrics.get("container_1_bolt_1").getMetricValueSum(metric).intValue());
     assertEquals(17,
@@ -93,12 +93,12 @@ public class TrackerMetricsProviderTest {
 
     assertEquals(2, metrics.size());
     assertNotNull(metrics.get(comp1));
-    assertEquals(1, metrics.get(comp1).getMetrics().size());
+    assertEquals(1, metrics.get(comp1).getInstanceData().size());
     assertEquals(104,
         metrics.get(comp1).getMetricValueSum("container_1_bolt-1_2", metric).intValue());
 
     assertNotNull(metrics.get(comp2));
-    assertEquals(1, metrics.get(comp2).getMetrics().size());
+    assertEquals(1, metrics.get(comp2).getInstanceData().size());
     assertEquals(17,
         metrics.get(comp2).getMetricValueSum("container_1_bolt-2_1", metric).intValue());
   }
@@ -123,9 +123,9 @@ public class TrackerMetricsProviderTest {
 
     assertEquals(1, metrics.size());
     assertNotNull(metrics.get(comp));
-    assertEquals(1, metrics.get(comp).getMetrics().size());
+    assertEquals(1, metrics.get(comp).getInstanceData().size());
 
-    HashMap<String, InstanceMetrics> componentMetrics = metrics.get(comp).getMetrics();
+    HashMap<String, InstanceMetrics> componentMetrics = metrics.get(comp).getInstanceData();
     assertEquals(601, componentMetrics.get("stmgr-1").getMetricValueSum(metric).intValue());
   }
 
@@ -146,7 +146,7 @@ public class TrackerMetricsProviderTest {
 
     assertEquals(1, metrics.size());
     assertNotNull(metrics.get(comp));
-    assertEquals(0, metrics.get(comp).getMetrics().size());
+    assertEquals(0, metrics.get(comp).getInstanceData().size());
   }
 
   private TrackerMetricsProvider createMetricsProviderSpy() {
@@ -182,9 +182,9 @@ public class TrackerMetricsProviderTest {
     assertEquals(1, metrics.size());
     ComponentMetrics componentMetrics = metrics.get(comp);
     assertNotNull(componentMetrics);
-    assertEquals(2, componentMetrics.getMetrics().size());
+    assertEquals(2, componentMetrics.getInstanceData().size());
 
-    InstanceMetrics instanceMetrics = componentMetrics.getMetrics("container_1_bolt_1");
+    InstanceMetrics instanceMetrics = componentMetrics.getInstanceData("container_1_bolt_1");
     assertNotNull(instanceMetrics);
     assertEquals(1, instanceMetrics.getMetrics().size());
 
@@ -192,7 +192,7 @@ public class TrackerMetricsProviderTest {
     assertEquals(1, metricValues.size());
     assertEquals(104, metricValues.get(Instant.ofEpochSecond(1497481288)).intValue());
 
-    instanceMetrics = componentMetrics.getMetrics("container_1_bolt_2");
+    instanceMetrics = componentMetrics.getInstanceData("container_1_bolt_2");
     assertNotNull(instanceMetrics);
     assertEquals(1, instanceMetrics.getMetrics().size());
 

@@ -211,7 +211,8 @@ public class ScaleDownResolverTest {
     metrics.addInstanceMetric(new InstanceMetrics("i2", BUFFER_SIZE, 1));
 
     int result = resolver.computeScaleDownFactor(metrics, new Symptom(
-        SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text(), metrics, new MetricsStats(0, 0, 0)));
+        SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text(), metrics, new MetricsStats(BUFFER_SIZE, 0, 0,
+        0)));
     assertEquals(1, result);
 
     metrics = new ComponentMetrics("bolt");
@@ -220,8 +221,8 @@ public class ScaleDownResolverTest {
     metrics.addInstanceMetric(new InstanceMetrics("i3", EXE_COUNT, 100));
 
     result = resolver.computeScaleDownFactor(metrics,
-        new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics, new MetricsStats(0, 0,
-            600)));
+        new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics, new MetricsStats
+            (EXE_COUNT, 0, 0, 600)));
     assertEquals(1, result);
 
     metrics = new ComponentMetrics("bolt");
@@ -230,8 +231,8 @@ public class ScaleDownResolverTest {
     metrics.addInstanceMetric(new InstanceMetrics("i3", EXE_COUNT, 150));
 
     result = resolver.computeScaleDownFactor(metrics,
-        new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics, new MetricsStats(0, 0,
-            400)));
+        new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics, new MetricsStats
+            (EXE_COUNT, 0, 0, 400)));
     assertEquals(2, result);
   }
 

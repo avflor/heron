@@ -17,7 +17,6 @@ package com.twitter.heron.healthmgr.sensors;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import javax.inject.Inject;
 
 import com.microsoft.dhalion.api.MetricsProvider;
@@ -31,30 +30,31 @@ import com.twitter.heron.healthmgr.common.TopologyProvider;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_EXE_COUNT;
 
 public class ExecuteCountSensor extends BaseSensor {
-  private final TopologyProvider topologyProvider;
   private final MetricsProvider metricsProvider;
-  private Map<String, MetricsStats> executeCountStats;
+  //private Map<String, MetricsStats> executeCountStats;
 
   @Inject
   ExecuteCountSensor(TopologyProvider topologyProvider,
                      HealthPolicyConfig policyConfig,
                      MetricsProvider metricsProvider) {
-    super(policyConfig, METRIC_EXE_COUNT.text(), ExecuteCountSensor.class.getSimpleName());
-    this.topologyProvider = topologyProvider;
+    super(topologyProvider, policyConfig, METRIC_EXE_COUNT.text(),
+        ExecuteCountSensor.class
+            .getSimpleName());
     this.metricsProvider = metricsProvider;
-    this.executeCountStats = new HashMap<>();
+    //this.executeCountStats = new HashMap<>();
   }
 
-  public Map<String, ComponentMetrics> get() {
-    String[] boltNames = topologyProvider.getBoltNames();
-    return get(boltNames);
+  @Override
+  public Map<String, ComponentMetrics> fetchMetrics() {
+    this.metrics = readMetrics(topologyProvider.getBoltNames());
+    return this.metrics;
   }
 
-  public Map<String, ComponentMetrics> get(String... boltNames) {
-    Map<String, ComponentMetrics> processingRates =  metricsProvider.getComponentMetrics
+  public Map<String, ComponentMetrics> readMetrics(String... boltNames) {
+    Map<String, ComponentMetrics> processingRates = metricsProvider.getComponentMetrics
         (getMetricName(),
-        getDuration(),
-        boltNames);
+            getDuration(),
+            boltNames);
     updateStats(processingRates);
     return processingRates;
   }
@@ -64,32 +64,22 @@ public class ExecuteCountSensor extends BaseSensor {
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       MetricsStats currentStats = compStats.computeStats(MetricName.
           METRIC_EXE_COUNT.text());
-      MetricsStats componentStats = executeCountStats.get(compMetrics.getComponentName());
-      if(componentStats == null){
-        executeCountStats.put(compMetrics.getComponentName(), currentStats);
-      }
-      else{
-        if(currentStats.getMetricMin() < componentStats.getMetricMin()){
+      MetricsStats componentStats = this.stats.get(compMetrics.getComponentName());
+      if (componentStats == null) {
+        this.stats.put(compMetrics.getComponentName(), currentStats);
+      } else {
+        if (currentStats.getMetricMin() < componentStats.getMetricMin()) {
           componentStats.setMetricMin(currentStats.getMetricMin());
         }
-        if(currentStats.getMetricMax() > componentStats.getMetricMax()){
+        if (currentStats.getMetricMax() > componentStats.getMetricMax()) {
           componentStats.setMetricMax(currentStats.getMetricMax());
         }
-        if(currentStats.getMetricAvg() > componentStats.getMetricAvg()){
+        if (currentStats.getMetricAvg() > componentStats.getMetricAvg()) {
           componentStats.setMetricAvg(currentStats.getMetricAvg());
         }
       }
-      executeCountStats.put(compMetrics.getComponentName(), componentStats);
+      this.stats.put(compMetrics.getComponentName(), componentStats);
     }
-  }
-
-  @Override
-  public MetricsStats getStats(String component){
-
-    if(executeCountStats.get(component) == null){
-      this.get(component);
-    }
-    return executeCountStats.get(component);
   }
 
 }

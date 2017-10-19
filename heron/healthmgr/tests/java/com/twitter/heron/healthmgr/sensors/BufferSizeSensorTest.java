@@ -33,8 +33,23 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class BufferSizeSensorTest {
+  static void registerStMgrInstanceMetricResponse(MetricsProvider metricsProvider,
+                                                  String metric,
+                                                  long value) {
+    Map<String, ComponentMetrics> result = new HashMap<>();
+    ComponentMetrics metrics = new ComponentMetrics("__stmgr__");
+    InstanceMetrics instanceMetrics = new InstanceMetrics("stmgr-1");
+    instanceMetrics.addMetric(metric, value);
+    metrics.addInstanceMetric(instanceMetrics);
+    result.put("__stmgr__", metrics);
+
+    when(metricsProvider.getComponentMetrics(metric, DEFAULT_METRIC_DURATION, "__stmgr__"))
+        .thenReturn(result);
+  }
+
   @Test
   public void providesBufferSizeMetricForBolts() {
+
     TopologyProvider topologyProvider = mock(TopologyProvider.class);
     when(topologyProvider.getBoltNames()).thenReturn(new String[]{"bolt-1", "bolt-2"});
 
@@ -59,31 +74,17 @@ public class BufferSizeSensorTest {
     BufferSizeSensor bufferSizeSensor =
         new BufferSizeSensor(null, packingPlanProvider, topologyProvider, metricsProvider);
 
-    Map<String, ComponentMetrics> componentMetrics = bufferSizeSensor.get();
+    Map<String, ComponentMetrics> componentMetrics = bufferSizeSensor.fetchMetrics();
     assertEquals(2, componentMetrics.size());
 
-    assertEquals(1, componentMetrics.get("bolt-1").getMetrics().size());
-    assertEquals(boltIds[0].length(), componentMetrics.get("bolt-1").getMetrics(boltIds[0])
+    assertEquals(1, componentMetrics.get("bolt-1").getInstanceData().size());
+    assertEquals(boltIds[0].length(), componentMetrics.get("bolt-1").getInstanceData(boltIds[0])
         .getMetricValueSum(MetricName.METRIC_BUFFER_SIZE.text()).intValue());
 
-    assertEquals(2, componentMetrics.get("bolt-2").getMetrics().size());
-    assertEquals(boltIds[1].length(), componentMetrics.get("bolt-2").getMetrics(boltIds[1])
+    assertEquals(2, componentMetrics.get("bolt-2").getInstanceData().size());
+    assertEquals(boltIds[1].length(), componentMetrics.get("bolt-2").getInstanceData(boltIds[1])
         .getMetricValueSum(MetricName.METRIC_BUFFER_SIZE.text()).intValue());
-    assertEquals(boltIds[2].length(), componentMetrics.get("bolt-2").getMetrics(boltIds[2])
+    assertEquals(boltIds[2].length(), componentMetrics.get("bolt-2").getInstanceData(boltIds[2])
         .getMetricValueSum(MetricName.METRIC_BUFFER_SIZE.text()).intValue());
-  }
-
-  static void registerStMgrInstanceMetricResponse(MetricsProvider metricsProvider,
-                                                  String metric,
-                                                  long value) {
-    Map<String, ComponentMetrics> result = new HashMap<>();
-    ComponentMetrics metrics = new ComponentMetrics("__stmgr__");
-    InstanceMetrics instanceMetrics = new InstanceMetrics("stmgr-1");
-    instanceMetrics.addMetric(metric, value);
-    metrics.addInstanceMetric(instanceMetrics);
-    result.put("__stmgr__", metrics);
-
-    when(metricsProvider.getComponentMetrics(metric, DEFAULT_METRIC_DURATION, "__stmgr__"))
-        .thenReturn(result);
   }
 }

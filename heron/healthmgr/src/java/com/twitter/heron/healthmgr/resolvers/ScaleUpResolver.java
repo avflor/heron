@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-
 import javax.inject.Inject;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -126,7 +125,7 @@ public class ScaleUpResolver implements IResolver {
   int computeScaleUpFactor(ComponentMetrics componentMetrics) {
     double totalCompBpTime = 0;
     String compName = componentMetrics.getComponentName();
-    for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
+    for (InstanceMetrics instanceMetrics : componentMetrics.getInstanceData().values()) {
       double instanceBp = instanceMetrics.getMetricValueSum(METRIC_BACK_PRESSURE.text());
       LOG.info(String.format("Instance:%s, bpTime:%.0f", instanceMetrics.getName(), instanceBp));
       totalCompBpTime += instanceBp;
@@ -141,7 +140,7 @@ public class ScaleUpResolver implements IResolver {
     double unusedCapacity = (1.0 * totalCompBpTime) / (1000 - totalCompBpTime);
     // scale up fencing: do not scale more than 4 times the current size
     unusedCapacity = unusedCapacity > 4.0 ? 4.0 : unusedCapacity;
-    int parallelism = (int) Math.ceil(componentMetrics.getMetrics().size() * (1 + unusedCapacity));
+    int parallelism = (int) Math.ceil(componentMetrics.getInstanceData().size() * (1 + unusedCapacity));
     LOG.info(String.format("Component's, %s, unused capacity is: %.3f. New parallelism: %d",
         compName, unusedCapacity, parallelism));
     return parallelism;

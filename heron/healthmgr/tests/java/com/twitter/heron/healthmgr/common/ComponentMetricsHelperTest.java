@@ -62,7 +62,7 @@ public class ComponentMetricsHelperTest {
     helper.computeBufferSizeTrend();
     assertEquals(5, helper.getMaxBufferChangeRate(), 0.1);
 
-    HashMap<String, InstanceMetrics> metrics = compMetrics.getMetrics();
+    HashMap<String, InstanceMetrics> metrics = compMetrics.getInstanceData();
     assertEquals(1, metrics.get("i1").getMetrics().get(METRIC_WAIT_Q_GROWTH_RATE.text()).size());
     assertEquals(5, metrics.get("i1").getMetricValueSum(METRIC_WAIT_Q_GROWTH_RATE.text()), 0.1);
     assertEquals(3, metrics.get("i2").getMetricValueSum(METRIC_WAIT_Q_GROWTH_RATE.text()), 0.1);

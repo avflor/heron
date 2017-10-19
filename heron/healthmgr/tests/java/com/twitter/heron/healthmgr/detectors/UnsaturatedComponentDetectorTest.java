@@ -17,6 +17,7 @@ package com.twitter.heron.healthmgr.detectors;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
@@ -51,7 +52,8 @@ public class UnsaturatedComponentDetectorTest {
 
     ExecuteCountSensor exsensor = mock(ExecuteCountSensor.class);
     when(exsensor.get()).thenReturn(topologyMetrics);
-    when(exsensor.getStats("bolt")).thenReturn(new MetricsStats(2, 10, 10));
+    when(exsensor.getStats("bolt")).thenReturn(Optional.of(new MetricsStats(
+        METRIC_BACK_PRESSURE.text(), 2, 10, 10)));
 
     ComponentMetrics bpMetrics =
         new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);
@@ -80,7 +82,8 @@ public class UnsaturatedComponentDetectorTest {
 
     ExecuteCountSensor exsensor = mock(ExecuteCountSensor.class);
     when(exsensor.get()).thenReturn(topologyMetrics);
-    when(exsensor.getStats("bolt")).thenReturn(new MetricsStats(2, 6, 6));
+    when(exsensor.getStats("bolt")).thenReturn(Optional.of(new MetricsStats(METRIC_BACK_PRESSURE
+        .text(), 2, 6, 6)));
 
     ComponentMetrics bpMetrics =
         new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);
@@ -109,7 +112,8 @@ public class UnsaturatedComponentDetectorTest {
 
     ExecuteCountSensor exsensor = mock(ExecuteCountSensor.class);
     when(exsensor.get()).thenReturn(topologyMetrics);
-    when(exsensor.getStats("bolt")).thenReturn(new MetricsStats(2, 6, 6));
+    when(exsensor.getStats("bolt")).thenReturn(Optional.of(new MetricsStats(
+        METRIC_EXE_COUNT.text(), 2, 6, 6)));
 
     ComponentMetrics bpMetrics =
         new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 100);
@@ -139,7 +143,8 @@ public class UnsaturatedComponentDetectorTest {
 
     ExecuteCountSensor exsensor = mock(ExecuteCountSensor.class);
     when(exsensor.get()).thenReturn(topologyMetrics);
-    when(exsensor.getStats("bolt")).thenReturn(new MetricsStats(1, 4, 4));
+    when(exsensor.getStats("bolt")).thenReturn(Optional.of(new MetricsStats(
+        METRIC_EXE_COUNT.text(), 1, 4, 4)));
 
     ComponentMetrics bpMetrics =
         new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);

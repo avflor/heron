@@ -15,47 +15,32 @@
 package com.twitter.heron.healthmgr.sensors;
 
 import java.time.Duration;
+import java.util.Map;
 
-import com.microsoft.dhalion.api.ISensor;
+import com.microsoft.dhalion.metrics.ComponentMetrics;
+import com.microsoft.dhalion.sensor.SensorImpl;
 
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.HealthPolicyConfigReader.PolicyConfigKey;
+import com.twitter.heron.healthmgr.common.TopologyProvider;
 
-public abstract class BaseSensor implements ISensor {
+public abstract class BaseSensor extends SensorImpl {
   static final Duration DEFAULT_METRIC_DURATION = Duration.ofSeconds(300);
   static final String COMPONENT_STMGR = "__stmgr__";
-
-  public enum MetricName {
-    METRIC_EXE_COUNT("__execute-count/default"),
-    METRIC_BACK_PRESSURE("__time_spent_back_pressure_by_compid/"),
-    METRIC_BUFFER_SIZE("__connection_buffer_by_instanceid/"),
-    METRIC_BUFFER_SIZE_SUFFIX("/packets"),
-    METRIC_WAIT_Q_GROWTH_RATE("METRIC_WAIT_Q_GROWTH_RATE");
-
-    private String text;
-
-    MetricName(String name) {
-      this.text = name;
-    }
-
-    public String text() {
-      return text;
-    }
-
-    @Override
-    public String toString() {
-      return text();
-    }
+  protected final TopologyProvider topologyProvider;
+  private final HealthPolicyConfig config;
+  private Duration duration;
+  BaseSensor(TopologyProvider topologyProvider, HealthPolicyConfig config,
+             String metricName, String confPrefix) {
+    super(metricName);
+    this.config = config;
+    duration = getDurationFromConfig(confPrefix);
+    this.topologyProvider = topologyProvider;
   }
 
-  private Duration duration;
-  private final HealthPolicyConfig config;
-  private final String metricName;
-
-  BaseSensor(HealthPolicyConfig config, String metricName, String confPrefix) {
-    this.config = config;
-    this.metricName = metricName;
-    duration = getDurationFromConfig(confPrefix);
+  @Override
+  public Map<String, ComponentMetrics> get() {
+    return get(topologyProvider.getBoltNames());
   }
 
   /**
@@ -78,11 +63,30 @@ public abstract class BaseSensor implements ISensor {
     return value;
   }
 
-  public String getMetricName() {
-    return metricName;
-  }
-
   public HealthPolicyConfig getConfig() {
     return config;
+  }
+
+  public enum MetricName {
+    METRIC_EXE_COUNT("__execute-count/default"),
+    METRIC_BACK_PRESSURE("__time_spent_back_pressure_by_compid/"),
+    METRIC_BUFFER_SIZE("__connection_buffer_by_instanceid/"),
+    METRIC_BUFFER_SIZE_SUFFIX("/packets"),
+    METRIC_WAIT_Q_GROWTH_RATE("METRIC_WAIT_Q_GROWTH_RATE");
+
+    private String text;
+
+    MetricName(String name) {
+      this.text = name;
+    }
+
+    public String text() {
+      return text;
+    }
+
+    @Override
+    public String toString() {
+      return text();
+    }
   }
 }
