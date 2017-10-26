@@ -17,6 +17,8 @@ package com.twitter.heron.healthmgr.sensors;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -68,31 +70,30 @@ public class TrackerMetricsProvider implements MetricsProvider {
   }
 
   @Override
-  public Map<String, ComponentMetrics> getComponentMetrics(String metric,
-                                                           Instant startTime,
-                                                           Duration duration,
-                                                           String... components) {
-    Map<String, ComponentMetrics> result = new HashMap<>();
+  public ComponentMetrics getComponentMetrics(String metric,
+                                              Instant startTime,
+                                              Duration duration,
+                                              String... components) {
+    ComponentMetrics result = new ComponentMetrics();
     for (String component : components) {
       String response = getMetricsFromTracker(metric, component, startTime, duration);
-      Map<String, InstanceMetrics> metrics = parse(response, component, metric);
-      ComponentMetrics componentMetric = new ComponentMetrics(component, metrics);
-      result.put(component, componentMetric);
+      Collection<InstanceMetrics> metrics = parse(response, component, metric);
+      result.addAll(metrics);
     }
     return result;
   }
 
   @Override
-  public Map<String, ComponentMetrics> getComponentMetrics(String metric,
-                                                           Duration duration,
-                                                           String... components) {
+  public ComponentMetrics getComponentMetrics(String metric,
+                                              Duration duration,
+                                              String... components) {
     Instant start = Instant.ofEpochMilli(clock.currentTime() - duration.toMillis());
     return getComponentMetrics(metric, start, duration, components);
   }
 
   @SuppressWarnings("unchecked")
-  private Map<String, InstanceMetrics> parse(String response, String component, String metric) {
-    Map<String, InstanceMetrics> metricsData = new HashMap<>();
+  private Collection<InstanceMetrics> parse(String response, String component, String metric) {
+    Collection<InstanceMetrics> metricsData = new ArrayList<>();
 
     if (response == null || response.isEmpty()) {
       return metricsData;
@@ -118,9 +119,9 @@ public class TrackerMetricsProvider implements MetricsProvider {
         values.put(Instant.ofEpochSecond(Long.parseLong(timeStamp)),
             Double.parseDouble(tmpValues.get(timeStamp)));
       }
-      InstanceMetrics instanceMetrics = new InstanceMetrics(instanceName);
-      instanceMetrics.addMetric(metric, values);
-      metricsData.put(instanceName, instanceMetrics);
+      InstanceMetrics instanceMetric = new InstanceMetrics(component, instanceName, metric);
+      instanceMetric.addValues(values);
+      metricsData.add(instanceMetric);
     }
 
     return metricsData;

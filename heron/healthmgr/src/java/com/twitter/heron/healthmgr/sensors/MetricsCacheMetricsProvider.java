@@ -18,6 +18,8 @@ package com.twitter.heron.healthmgr.sensors;
 import java.net.HttpURLConnection;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -64,35 +66,34 @@ public class MetricsCacheMetricsProvider implements MetricsProvider {
   }
 
   @Override
-  public Map<String, ComponentMetrics> getComponentMetrics(String metric,
-                                                           Instant startTime,
-                                                           Duration duration,
-                                                           String... components) {
-    Map<String, ComponentMetrics> result = new HashMap<>();
+  public ComponentMetrics getComponentMetrics(String metric,
+                                              Instant startTime,
+                                              Duration duration,
+                                              String... components) {
+    ComponentMetrics result = new ComponentMetrics();
     for (String component : components) {
       TopologyMaster.MetricResponse response =
           getMetricsFromMetricsCache(metric, component, startTime, duration);
 
-      Map<String, InstanceMetrics> metrics = parse(response, component, metric, startTime);
-      ComponentMetrics componentMetric = new ComponentMetrics(component, metrics);
-      result.put(component, componentMetric);
+      Collection<InstanceMetrics> metrics = parse(response, component, metric, startTime);
+      result.addAll(metrics);
     }
     return result;
   }
 
   @Override
-  public Map<String, ComponentMetrics> getComponentMetrics(String metric,
-                                                           Duration duration,
-                                                           String... components) {
+  public ComponentMetrics getComponentMetrics(String metric,
+                                              Duration duration,
+                                              String... components) {
     Instant start = Instant.ofEpochMilli(clock.currentTime() - duration.toMillis());
     return getComponentMetrics(metric, start, duration, components);
   }
 
   @VisibleForTesting
   @SuppressWarnings("unchecked")
-  Map<String, InstanceMetrics> parse(
+  private Collection<InstanceMetrics> parse(
       TopologyMaster.MetricResponse response, String component, String metric, Instant startTime) {
-    Map<String, InstanceMetrics> metricsData = new HashMap<>();
+    Collection<InstanceMetrics> metricsData = new ArrayList<>();
 
     if (response == null || !response.getStatus().getStatus().equals(StatusCode.OK)) {
       LOG.info(String.format(
@@ -109,7 +110,6 @@ public class MetricsCacheMetricsProvider implements MetricsProvider {
     // convert heron.protobuf.taskMetrics to dhalion.InstanceMetrics
     for (TaskMetric tm : response.getMetricList()) {
       String instanceId = tm.getInstanceId();
-      InstanceMetrics instanceMetrics = new InstanceMetrics(instanceId);
 
       for (IndividualMetric im : tm.getMetricList()) {
         String metricName = im.getName();
@@ -127,11 +127,12 @@ public class MetricsCacheMetricsProvider implements MetricsProvider {
         }
 
         if (!values.isEmpty()) {
-          instanceMetrics.addMetric(metricName, values);
+          InstanceMetrics instanceMetrics = new InstanceMetrics(component, instanceId, metricName);
+          instanceMetrics.addValues(values);
+          metricsData.add(instanceMetrics);
         }
       }
 
-      metricsData.put(instanceId, instanceMetrics);
     }
 
     return metricsData;
