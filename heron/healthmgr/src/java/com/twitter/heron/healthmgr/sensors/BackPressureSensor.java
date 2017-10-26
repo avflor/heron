@@ -16,10 +16,7 @@
 package com.twitter.heron.healthmgr.sensors;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.logging.Logger;
+import java.util.Collection;
 
 import javax.inject.Inject;
 
@@ -34,8 +31,6 @@ import com.twitter.heron.healthmgr.common.TopologyProvider;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 
 public class BackPressureSensor extends BaseSensor {
-  private static final Logger LOG = Logger.getLogger(BackPressureSensor.class.getName());
-
   private final MetricsProvider metricsProvider;
   private final PackingPlanProvider packingPlanProvider;
   private final TopologyProvider topologyProvider;
@@ -51,37 +46,26 @@ public class BackPressureSensor extends BaseSensor {
     this.metricsProvider = metricsProvider;
   }
 
-  @Override
-  public Map<String, ComponentMetrics> get(String... components) {
-    return get();
-  }
-
   /**
    * Computes the average (millis/sec) back-pressure caused by instances in the configured window
    *
    * @return the average value
    */
-  public Map<String, ComponentMetrics> get() {
-    Map<String, ComponentMetrics> result = new HashMap<>();
-
+  @Override
+  public ComponentMetrics fetchMetrics() {
+    metrics = new ComponentMetrics();
     String[] boltComponents = topologyProvider.getBoltNames();
     for (String boltComponent : boltComponents) {
       String[] boltInstanceNames = packingPlanProvider.getBoltInstanceNames(boltComponent);
 
       Duration duration = getDuration();
-      Map<String, InstanceMetrics> instanceMetrics = new HashMap<>();
       for (String boltInstanceName : boltInstanceNames) {
         String metric = getMetricName() + boltInstanceName;
-        Map<String, ComponentMetrics> stmgrResult = metricsProvider.getComponentMetrics(
+        ComponentMetrics stmgrResult = metricsProvider.getComponentMetrics(
             metric, duration, COMPONENT_STMGR);
 
-        if (stmgrResult.get(COMPONENT_STMGR) == null) {
-          continue;
-        }
-
-        HashMap<String, InstanceMetrics> streamManagerResult =
-            stmgrResult.get(COMPONENT_STMGR).getMetrics();
-
+        Collection<InstanceMetrics> streamManagerResult =
+            stmgrResult.filterByComponent(COMPONENT_STMGR).getMetrics();
         if (streamManagerResult.isEmpty()) {
           continue;
         }
@@ -90,14 +74,9 @@ public class BackPressureSensor extends BaseSensor {
         // for tracker rest api: expect just one metrics manager instance in the result;
         // for tmaster/metricscache stat interface: expect a list
         Double valueSum = 0.0;
-        for (Iterator<InstanceMetrics> it = streamManagerResult.values().iterator();
-            it.hasNext();) {
-          InstanceMetrics stmgrInstanceResult = it.next();
-
-          Double val = stmgrInstanceResult.getMetricValueSum(metric);
-          if (val == null) {
-            continue;
-          } else {
+        for (InstanceMetrics stmgrInstanceResult : streamManagerResult) {
+          Double val = stmgrInstanceResult.getValueSum();
+          if (val != null) {
             valueSum += val;
           }
         }
@@ -108,15 +87,12 @@ public class BackPressureSensor extends BaseSensor {
         // check partially corrects the reported BP value
         averageBp = averageBp > 1000 ? 1000 : averageBp;
         InstanceMetrics boltInstanceMetric
-            = new InstanceMetrics(boltInstanceName, getMetricName(), averageBp);
-
-        instanceMetrics.put(boltInstanceName, boltInstanceMetric);
+            = new InstanceMetrics(boltComponent, boltInstanceName, getMetricName());
+        boltInstanceMetric.addValue(averageBp);
+        metrics.add(boltInstanceMetric);
       }
-
-      ComponentMetrics componentMetrics = new ComponentMetrics(boltComponent, instanceMetrics);
-      result.put(boltComponent, componentMetrics);
     }
 
-    return result;
+    return metrics;
   }
 }

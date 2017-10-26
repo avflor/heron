@@ -17,7 +17,6 @@ package com.twitter.heron.healthmgr.detectors;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.inject.Inject;
@@ -57,13 +56,14 @@ public class GrowingWaitQueueDetector implements IDetector {
   public List<Symptom> detect() {
     ArrayList<Symptom> result = new ArrayList<>();
 
-    Map<String, ComponentMetrics> bufferSizes = pendingBufferSensor.get();
-    for (ComponentMetrics compMetrics : bufferSizes.values()) {
+    ComponentMetrics bufferSizes = pendingBufferSensor.getMetrics();
+    for (String compName : bufferSizes.getComponentNames()) {
+      ComponentMetrics compMetrics = bufferSizes.filterByComponent(compName);
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       compStats.computeBufferSizeTrend();
       if (compStats.getMaxBufferChangeRate() > rateLimit) {
         LOG.info(String.format("Detected growing wait queues for %s, max rate %f",
-            compMetrics.getName(), compStats.getMaxBufferChangeRate()));
+            compName, compStats.getMaxBufferChangeRate()));
         result.add(new Symptom(SYMPTOM_GROWING_WAIT_Q.text(), compMetrics));
       }
     }

@@ -42,12 +42,16 @@ public class ComponentMetricsHelper {
   private double totalBackpressure = 0;
 
   public ComponentMetricsHelper(ComponentMetrics compMetrics) {
+    if (compMetrics.getComponentNames().size() != 1) {
+      throw new IllegalArgumentException("Only 1 component's metrics allowed");
+    }
     this.componentMetrics = compMetrics;
   }
 
   public void computeBpStats() {
-    for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
-      Double bpValue = instanceMetrics.getMetricValueSum(METRIC_BACK_PRESSURE.text());
+    ComponentMetrics metrics = componentMetrics.filterByMetric(METRIC_BACK_PRESSURE.text());
+    for (InstanceMetrics instanceMetrics : metrics.getMetrics()) {
+      Double bpValue = instanceMetrics.getValueSum();
       if (bpValue != null && bpValue > 0) {
         boltsWithBackpressure.add(instanceMetrics);
         totalBackpressure += bpValue;
@@ -56,9 +60,9 @@ public class ComponentMetricsHelper {
   }
 
   public void computeBufferSizeTrend() {
-    for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
-      Map<Instant, Double> bufferMetrics
-          = instanceMetrics.getMetrics().get(METRIC_BUFFER_SIZE.text());
+    ComponentMetrics metrics = componentMetrics.filterByMetric(METRIC_BUFFER_SIZE.text());
+    for (InstanceMetrics instanceMetrics : metrics.getMetrics()) {
+      Map<Instant, Double> bufferMetrics = instanceMetrics.getValues();
       if (bufferMetrics == null || bufferMetrics.size() < 3) {
         // missing of insufficient data for creating a trend line
         continue;
@@ -70,7 +74,8 @@ public class ComponentMetricsHelper {
       }
 
       double slope = simpleRegression.getSlope();
-      instanceMetrics.addMetric(METRIC_WAIT_Q_GROWTH_RATE.text(), slope);
+      componentMetrics.addMetric(instanceMetrics.getComponentName(),
+          instanceMetrics.getInstanceName(), METRIC_WAIT_Q_GROWTH_RATE.text(), slope);
 
       if (maxBufferChangeRate < slope) {
         maxBufferChangeRate = slope;
@@ -85,9 +90,8 @@ public class ComponentMetricsHelper {
   public MetricsStats computeMinMaxStats(String metric) {
     double metricMax = 0;
     double metricMin = Double.MAX_VALUE;
-    for (InstanceMetrics instance : componentMetrics.getMetrics().values()) {
-
-      Double metricValue = instance.getMetricValueSum(metric);
+    for (InstanceMetrics instance : componentMetrics.filterByMetric(metric).getMetrics()) {
+      Double metricValue = instance.getValueSum();
       if (metricValue == null) {
         continue;
       }
