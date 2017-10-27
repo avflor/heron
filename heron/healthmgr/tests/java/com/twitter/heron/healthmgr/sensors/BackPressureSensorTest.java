@@ -14,18 +14,19 @@
 
 package com.twitter.heron.healthmgr.sensors;
 
-import java.util.Map;
+import java.util.Optional;
 
 import com.microsoft.dhalion.api.MetricsProvider;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
+import com.microsoft.dhalion.metrics.InstanceMetrics;
 
 import org.junit.Test;
 
 import com.twitter.heron.healthmgr.common.PackingPlanProvider;
 import com.twitter.heron.healthmgr.common.TopologyProvider;
-import com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName;
 
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.DEFAULT_METRIC_DURATION;
+import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -49,7 +50,7 @@ public class BackPressureSensorTest {
     MetricsProvider metricsProvider = mock(MetricsProvider.class);
 
     for (String boltId : boltIds) {
-      String metric = MetricName.METRIC_BACK_PRESSURE + boltId;
+      String metric = METRIC_BACK_PRESSURE + boltId;
       // the back pressure sensor will return average bp per second, so multiply by duration
       BufferSizeSensorTest.registerStMgrInstanceMetricResponse(metricsProvider,
           metric,
@@ -58,18 +59,22 @@ public class BackPressureSensorTest {
 
     BackPressureSensor backPressureSensor =
         new BackPressureSensor(packingPlanProvider, topologyProvider, null, metricsProvider);
+    backPressureSensor.fetchMetrics();
 
-    Map<String, ComponentMetrics> componentMetrics = backPressureSensor.get();
-    assertEquals(2, componentMetrics.size());
+    ComponentMetrics componentMetrics = backPressureSensor.getMetrics();
+    assertEquals(2, componentMetrics.getComponentNames().size());
 
-    assertEquals(1, componentMetrics.get("bolt-1").getMetrics().size());
-    assertEquals(boltIds[0].length(), componentMetrics.get("bolt-1").getMetrics(boltIds[0])
-        .getMetricValueSum(MetricName.METRIC_BACK_PRESSURE.text()).intValue());
+    assertEquals(1, componentMetrics.filterByComponent("bolt-1").getMetrics().size());
+    Optional<InstanceMetrics> result
+        = componentMetrics.getMetrics("bolt-1", boltIds[0], METRIC_BACK_PRESSURE.text());
+    assertEquals(boltIds[0].length(), result.get().getValueSum().intValue());
 
-    assertEquals(2, componentMetrics.get("bolt-2").getMetrics().size());
-    assertEquals(boltIds[1].length(), componentMetrics.get("bolt-2").getMetrics(boltIds[1])
-        .getMetricValueSum(MetricName.METRIC_BACK_PRESSURE.text()).intValue());
-    assertEquals(boltIds[2].length(), componentMetrics.get("bolt-2").getMetrics(boltIds[2])
-        .getMetricValueSum(MetricName.METRIC_BACK_PRESSURE.text()).intValue());
+    assertEquals(2, componentMetrics.filterByComponent("bolt-2").getMetrics().size());
+    result
+        = componentMetrics.getMetrics("bolt-2", boltIds[1], METRIC_BACK_PRESSURE.text());
+    assertEquals(boltIds[1].length(), result.get().getValueSum().intValue());
+    result
+        = componentMetrics.getMetrics("bolt-2", boltIds[2], METRIC_BACK_PRESSURE.text());
+    assertEquals(boltIds[2].length(), result.get().getValueSum().intValue());
   }
 }

@@ -43,46 +43,41 @@ public class GrowingWaitQueueDetectorTest {
     ComponentMetrics compMetrics;
     InstanceMetrics instanceMetrics;
     Map<Instant, Double> bufferSizes;
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
 
-    instanceMetrics = new InstanceMetrics("i1");
+    instanceMetrics = new InstanceMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text());
     bufferSizes = new HashMap<>();
     bufferSizes.put(Instant.ofEpochSecond(1497892222), 0.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892270), 300.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892330), 700.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892390), 1000.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892450), 1300.0);
-    instanceMetrics.addMetric(METRIC_BUFFER_SIZE.text(), bufferSizes);
+    instanceMetrics.addValues(bufferSizes);
 
-    compMetrics = new ComponentMetrics("bolt");
-    compMetrics.addInstanceMetric(instanceMetrics);
-
-    topologyMetrics.put("bolt", compMetrics);
+    compMetrics = new ComponentMetrics();
+    compMetrics.add(instanceMetrics);
 
     BufferSizeSensor sensor = mock(BufferSizeSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(compMetrics);
 
     GrowingWaitQueueDetector detector = new GrowingWaitQueueDetector(sensor, config);
     List<Symptom> symptoms = detector.detect();
 
     assertEquals(1, symptoms.size());
 
-    instanceMetrics = new InstanceMetrics("i1");
+    instanceMetrics = new InstanceMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text());
     bufferSizes = new HashMap<>();
     bufferSizes.put(Instant.ofEpochSecond(1497892222), 0.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892270), 200.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892330), 400.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892390), 600.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892450), 800.0);
-    instanceMetrics.addMetric(METRIC_BUFFER_SIZE.text(), bufferSizes);
+    instanceMetrics.addValues(bufferSizes);
 
-    compMetrics = new ComponentMetrics("bolt");
-    compMetrics.addInstanceMetric(instanceMetrics);
-
-    topologyMetrics.put("bolt", compMetrics);
+    compMetrics = new ComponentMetrics();
+    compMetrics.add(instanceMetrics);
 
     sensor = mock(BufferSizeSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(compMetrics);
 
     detector = new GrowingWaitQueueDetector(sensor, config);
     symptoms = detector.detect();

@@ -14,13 +14,10 @@
 
 package com.twitter.heron.healthmgr.detectors;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
-import com.microsoft.dhalion.metrics.InstanceMetrics;
 
 import org.junit.Test;
 
@@ -39,15 +36,12 @@ public class WaitQueueDisparityDetectorTest {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_DISPARITY_RATIO, 20.0)).thenReturn(15.0);
 
-    ComponentMetrics compMetrics = new ComponentMetrics("bolt");
-    compMetrics.addInstanceMetric(new InstanceMetrics("i1", METRIC_BUFFER_SIZE.text(), 1501));
-    compMetrics.addInstanceMetric(new InstanceMetrics("i2", METRIC_BUFFER_SIZE.text(), 100));
-
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt", compMetrics);
+    ComponentMetrics compMetrics = new ComponentMetrics();
+    compMetrics.addMetric("bolt", "i1", METRIC_BUFFER_SIZE.text(), 1501);
+    compMetrics.addMetric("bolt", "i2", METRIC_BUFFER_SIZE.text(), 100);
 
     BufferSizeSensor sensor = mock(BufferSizeSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(compMetrics);
     when(sensor.getMetricName()).thenReturn(METRIC_BUFFER_SIZE.text());
 
     WaitQueueDisparityDetector detector = new WaitQueueDisparityDetector(sensor, config);
@@ -55,13 +49,13 @@ public class WaitQueueDisparityDetectorTest {
 
     assertEquals(1, symptoms.size());
 
-    compMetrics = new ComponentMetrics("bolt");
-    compMetrics.addInstanceMetric(new InstanceMetrics("i1", METRIC_BUFFER_SIZE.text(), 1500));
-    compMetrics.addInstanceMetric(new InstanceMetrics("i2", METRIC_BUFFER_SIZE.text(), 110));
-    topologyMetrics.put("bolt", compMetrics);
+    compMetrics = new ComponentMetrics();
+    compMetrics.addMetric("bolt", "i1", METRIC_BUFFER_SIZE.text(), 1501);
+    compMetrics.addMetric("bolt", "i2", METRIC_BUFFER_SIZE.text(), 110);
 
     sensor = mock(BufferSizeSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(compMetrics);
+    when(sensor.getMetricName()).thenReturn(METRIC_BUFFER_SIZE.text());
 
     detector = new WaitQueueDisparityDetector(sensor, config);
     symptoms = detector.detect();

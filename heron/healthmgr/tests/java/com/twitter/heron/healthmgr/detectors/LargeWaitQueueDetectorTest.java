@@ -14,9 +14,7 @@
 
 package com.twitter.heron.healthmgr.detectors;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
@@ -38,25 +36,22 @@ public class LargeWaitQueueDetectorTest {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_SIZE_LIMIT, 1000)).thenReturn(20);
 
-    ComponentMetrics compMetrics
-        = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 21);
-
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt", compMetrics);
+    ComponentMetrics compMetrics = new ComponentMetrics();
+    compMetrics.addMetric("bolt", "i1", METRIC_BUFFER_SIZE.text(), 21);
 
     BufferSizeSensor sensor = mock(BufferSizeSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(compMetrics);
 
     LargeWaitQueueDetector detector = new LargeWaitQueueDetector(sensor, config);
     List<Symptom> symptoms = detector.detect();
 
     assertEquals(1, symptoms.size());
 
-    compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text(), 19);
-    topologyMetrics.put("bolt", compMetrics);
+    compMetrics = new ComponentMetrics();
+    compMetrics.addMetric("bolt", "i1", METRIC_BUFFER_SIZE.text(), 19);
 
     sensor = mock(BufferSizeSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(compMetrics);
 
     detector = new LargeWaitQueueDetector(sensor, config);
     symptoms = detector.detect();
