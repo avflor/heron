@@ -23,7 +23,6 @@ import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.diagnoser.Diagnosis;
 import com.microsoft.dhalion.events.EventManager;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
-import com.microsoft.dhalion.metrics.InstanceMetrics;
 import com.microsoft.dhalion.metrics.MetricsStats;
 import com.microsoft.dhalion.resolver.Action;
 
@@ -80,8 +79,9 @@ public class ScaleDownResolverTest {
     ISchedulerClient scheduler = mock(ISchedulerClient.class);
     when(scheduler.updateTopology(any(UpdateTopologyRequest.class))).thenReturn(true);
 
-    ComponentMetrics metrics = new ComponentMetrics("bolt-1", "i1", BUFFER_SIZE, 1);
-    metrics.addInstanceMetric(new InstanceMetrics("i2", BUFFER_SIZE, 1));
+    ComponentMetrics metrics = new ComponentMetrics();
+    metrics.addMetric("bolt-1", "i1", BUFFER_SIZE, 1);
+    metrics.addMetric("bolt-1", "i2", BUFFER_SIZE, 1);
 
     Symptom symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text(), metrics);
     List<Diagnosis> diagnosis = new ArrayList<>();
@@ -116,8 +116,9 @@ public class ScaleDownResolverTest {
     ISchedulerClient scheduler = mock(ISchedulerClient.class);
     when(scheduler.updateTopology(any(UpdateTopologyRequest.class))).thenReturn(true);
 
-    ComponentMetrics metrics = new ComponentMetrics("bolt-1", "i1", EXE_COUNT, 100);
-    metrics.addInstanceMetric(new InstanceMetrics("i2", EXE_COUNT, 150));
+    ComponentMetrics metrics = new ComponentMetrics();
+    metrics.addMetric("bolt-1", "i1", EXE_COUNT, 100);
+    metrics.addMetric("bolt-1", "i2", EXE_COUNT, 150);
 
     Symptom symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics);
     List<Diagnosis> diagnosis = new ArrayList<>();
@@ -152,8 +153,9 @@ public class ScaleDownResolverTest {
     ISchedulerClient scheduler = mock(ISchedulerClient.class);
     when(scheduler.updateTopology(any(UpdateTopologyRequest.class))).thenReturn(true);
 
-    ComponentMetrics metrics = new ComponentMetrics("bolt-1", "i1", EXE_COUNT, 100);
-    metrics.addInstanceMetric(new InstanceMetrics("i2", EXE_COUNT, 150));
+    ComponentMetrics metrics = new ComponentMetrics();
+    metrics.addMetric("bolt-1", "i1", EXE_COUNT, 100);
+    metrics.addMetric("bolt-1", "i2", EXE_COUNT, 150);
 
     Symptom symptom = new Symptom("RANDOM_SYMPTOM", metrics);
     List<Diagnosis> diagnosis = new ArrayList<>();
@@ -206,29 +208,29 @@ public class ScaleDownResolverTest {
         new ScaleDownResolver(null, null, null, eventManager, null,
             healthconfig);
 
-    ComponentMetrics metrics = new ComponentMetrics("bolt");
-    metrics.addInstanceMetric(new InstanceMetrics("i1", BUFFER_SIZE, 1));
-    metrics.addInstanceMetric(new InstanceMetrics("i2", BUFFER_SIZE, 1));
+    ComponentMetrics metrics = new ComponentMetrics();
+    metrics.addMetric("bolt", "i1", BUFFER_SIZE, 1);
+    metrics.addMetric("bolt", "i2", BUFFER_SIZE, 1);
 
     int result = resolver.computeScaleDownFactor(metrics, new Symptom(
         SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text(), metrics, new MetricsStats(BUFFER_SIZE, 0, 0,
         0)));
     assertEquals(1, result);
 
-    metrics = new ComponentMetrics("bolt");
-    metrics.addInstanceMetric(new InstanceMetrics("i1", EXE_COUNT, 100));
-    metrics.addInstanceMetric(new InstanceMetrics("i2", EXE_COUNT, 100));
-    metrics.addInstanceMetric(new InstanceMetrics("i3", EXE_COUNT, 100));
+    metrics = new ComponentMetrics();
+    metrics.addMetric("bolt", "i1", EXE_COUNT, 100);
+    metrics.addMetric("bolt", "i2", EXE_COUNT, 100);
+    metrics.addMetric("bolt", "i3", EXE_COUNT, 100);
 
     result = resolver.computeScaleDownFactor(metrics,
         new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics, new MetricsStats
             (EXE_COUNT, 0, 0, 600)));
     assertEquals(1, result);
 
-    metrics = new ComponentMetrics("bolt");
-    metrics.addInstanceMetric(new InstanceMetrics("i1", EXE_COUNT, 150));
-    metrics.addInstanceMetric(new InstanceMetrics("i2", EXE_COUNT, 150));
-    metrics.addInstanceMetric(new InstanceMetrics("i3", EXE_COUNT, 150));
+    metrics = new ComponentMetrics();
+    metrics.addMetric("bolt", "i1", EXE_COUNT, 150);
+    metrics.addMetric("bolt", "i2", EXE_COUNT, 150);
+    metrics.addMetric("bolt", "i3", EXE_COUNT, 150);
 
     result = resolver.computeScaleDownFactor(metrics,
         new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics, new MetricsStats
@@ -264,6 +266,4 @@ public class ScaleDownResolverTest {
     spouts.put("spout", 1);
     return TopologyTests.createTopology("T", new com.twitter.heron.api.Config(), spouts, bolts);
   }
-
-
 }

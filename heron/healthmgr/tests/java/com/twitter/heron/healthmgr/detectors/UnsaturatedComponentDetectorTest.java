@@ -14,9 +14,7 @@
 
 package com.twitter.heron.healthmgr.detectors;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import com.microsoft.dhalion.detector.Symptom;
@@ -39,29 +37,24 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class UnsaturatedComponentDetectorTest {
-
   @Test
   public void testHighConfUnsaturatedComponent() {
-
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_NOISE_FILTER, 20)).thenReturn(50);
 
-    ComponentMetrics exMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt", exMetrics);
+    ComponentMetrics exMetrics = new ComponentMetrics();
+    exMetrics.addMetric("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
 
     ExecuteCountSensor exsensor = mock(ExecuteCountSensor.class);
-    when(exsensor.get()).thenReturn(topologyMetrics);
+    when(exsensor.getMetrics()).thenReturn(exMetrics);
     when(exsensor.getStats("bolt")).thenReturn(Optional.of(new MetricsStats(
         METRIC_BACK_PRESSURE.text(), 2, 10, 10)));
 
-    ComponentMetrics bpMetrics =
-        new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);
-    Map<String, ComponentMetrics> topologybpMetrics = new HashMap<>();
-    topologybpMetrics.put("bolt", bpMetrics);
+    ComponentMetrics bpMetrics = new ComponentMetrics();
+    bpMetrics.addMetric("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);
 
     BackPressureSensor bpsensor = mock(BackPressureSensor.class);
-    when(bpsensor.get()).thenReturn(topologybpMetrics);
+    when(bpsensor.getMetrics()).thenReturn(bpMetrics);
 
     UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(exsensor, bpsensor,
         config);
@@ -72,26 +65,22 @@ public class UnsaturatedComponentDetectorTest {
 
   @Test
   public void testLowConfUnsaturatedComponent() {
-
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_NOISE_FILTER, 20)).thenReturn(50);
 
-    ComponentMetrics exMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt", exMetrics);
+    ComponentMetrics exMetrics = new ComponentMetrics();
+    exMetrics.addMetric("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
 
     ExecuteCountSensor exsensor = mock(ExecuteCountSensor.class);
-    when(exsensor.get()).thenReturn(topologyMetrics);
+    when(exsensor.getMetrics()).thenReturn(exMetrics);
     when(exsensor.getStats("bolt")).thenReturn(Optional.of(new MetricsStats(METRIC_BACK_PRESSURE
         .text(), 2, 6, 6)));
 
-    ComponentMetrics bpMetrics =
-        new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);
-    Map<String, ComponentMetrics> topologybpMetrics = new HashMap<>();
-    topologybpMetrics.put("bolt", bpMetrics);
+    ComponentMetrics bpMetrics = new ComponentMetrics();
+    bpMetrics.addMetric("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);
 
     BackPressureSensor bpsensor = mock(BackPressureSensor.class);
-    when(bpsensor.get()).thenReturn(topologybpMetrics);
+    when(bpsensor.getMetrics()).thenReturn(bpMetrics);
 
     UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(exsensor, bpsensor,
         config);
@@ -102,26 +91,22 @@ public class UnsaturatedComponentDetectorTest {
 
   @Test
   public void testNegativeUnsaturatedComponentwithbackpressure() {
-
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_NOISE_FILTER, 20)).thenReturn(50);
 
-    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt", compMetrics);
+    ComponentMetrics compMetrics = new ComponentMetrics();
+    compMetrics.addMetric("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
 
     ExecuteCountSensor exsensor = mock(ExecuteCountSensor.class);
-    when(exsensor.get()).thenReturn(topologyMetrics);
+    when(exsensor.getMetrics()).thenReturn(compMetrics);
     when(exsensor.getStats("bolt")).thenReturn(Optional.of(new MetricsStats(
         METRIC_EXE_COUNT.text(), 2, 6, 6)));
 
-    ComponentMetrics bpMetrics =
-        new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 100);
-    Map<String, ComponentMetrics> topologybpMetrics = new HashMap<>();
-    topologybpMetrics.put("bolt", bpMetrics);
+    ComponentMetrics bpMetrics = new ComponentMetrics();
+    bpMetrics.addMetric("bolt", "i1", METRIC_BACK_PRESSURE.text(), 100);
 
     BackPressureSensor bpsensor = mock(BackPressureSensor.class);
-    when(bpsensor.get()).thenReturn(topologybpMetrics);
+    when(bpsensor.getMetrics()).thenReturn(bpMetrics);
 
     UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(exsensor,
         bpsensor, config);
@@ -130,29 +115,24 @@ public class UnsaturatedComponentDetectorTest {
     assertEquals(0, symptoms.size());
   }
 
-
   @Test
   public void testNegativeUnsaturatedComponentNoBackpressure() {
-
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_NOISE_FILTER, 20)).thenReturn(50);
 
-    ComponentMetrics compMetrics = new ComponentMetrics("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt", compMetrics);
+    ComponentMetrics compMetrics = new ComponentMetrics();
+    compMetrics.addMetric("bolt", "i1", METRIC_EXE_COUNT.text(), 5);
 
     ExecuteCountSensor exsensor = mock(ExecuteCountSensor.class);
-    when(exsensor.get()).thenReturn(topologyMetrics);
+    when(exsensor.getMetrics()).thenReturn(compMetrics);
     when(exsensor.getStats("bolt")).thenReturn(Optional.of(new MetricsStats(
         METRIC_EXE_COUNT.text(), 1, 4, 4)));
 
-    ComponentMetrics bpMetrics =
-        new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);
-    Map<String, ComponentMetrics> topologybpMetrics = new HashMap<>();
-    topologybpMetrics.put("bolt", bpMetrics);
+    ComponentMetrics bpMetrics = new ComponentMetrics();
+    bpMetrics.addMetric("bolt", "i1", METRIC_BACK_PRESSURE.text(), 0);
 
     BackPressureSensor bpsensor = mock(BackPressureSensor.class);
-    when(bpsensor.get()).thenReturn(topologybpMetrics);
+    when(bpsensor.getMetrics()).thenReturn(bpMetrics);
 
     UnsaturatedComponentDetector detector = new UnsaturatedComponentDetector(exsensor, bpsensor,
         config);
@@ -160,5 +140,4 @@ public class UnsaturatedComponentDetectorTest {
 
     assertEquals(0, symptoms.size());
   }
-
 }

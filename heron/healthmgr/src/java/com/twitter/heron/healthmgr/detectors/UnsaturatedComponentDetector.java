@@ -17,9 +17,9 @@ package com.twitter.heron.healthmgr.detectors;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
+
 import javax.inject.Inject;
 
 import com.microsoft.dhalion.detector.Symptom;
@@ -62,9 +62,10 @@ public class UnsaturatedComponentDetector extends BaseDetector {
   public List<Symptom> detect() {
     ArrayList<Symptom> result = new ArrayList<>();
 
-    Map<String, ComponentMetrics> processingRates = executeCountSensor.get();
-    Map<String, ComponentMetrics> backpressureMetrics = backPressureSensor.get();
-    for (ComponentMetrics compMetrics : backpressureMetrics.values()) {
+    ComponentMetrics processingRates = executeCountSensor.getMetrics();
+    ComponentMetrics backpressureMetrics = backPressureSensor.getMetrics();
+    for (String compName : backpressureMetrics.getComponentNames()) {
+      ComponentMetrics compMetrics = backpressureMetrics.filterByComponent(compName);
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       compStats.computeBpStats();
       if (compStats.getTotalBackpressure() > noiseFilterMillis) {
@@ -72,19 +73,19 @@ public class UnsaturatedComponentDetector extends BaseDetector {
       }
     }
 
-    for (ComponentMetrics compMetrics : processingRates.values()) {
+    for (String compName : processingRates.getComponentNames()) {
+      ComponentMetrics compMetrics = processingRates.filterByComponent(compName);
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       MetricsStats currentStats = compStats.computeStats(BaseSensor.MetricName.
           METRIC_EXE_COUNT.text());
-      Optional<MetricsStats> processingRateStats = executeCountSensor.getStats(compMetrics
-          .getComponentName());
+      Optional<MetricsStats> processingRateStats = executeCountSensor.getStats(compName);
       if (!processingRateStats.isPresent()) {
         return result;
       }
       if (currentStats.getMetricAvg() <= 0.8 * processingRateStats.get().getMetricAvg()) {
         LOG.info(String.format("Detected unsaturated component with high confidence %s: current "
                 + "average processing " + "rate is %f, previous observed maximum average rate is "
-                + "%f", compMetrics.getComponentName(), currentStats.getMetricAvg(),
+                + "%f", compName, currentStats.getMetricAvg(),
             processingRateStats.get().getMetricAvg()));
         result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics,
             processingRateStats.get()));
@@ -93,12 +94,11 @@ public class UnsaturatedComponentDetector extends BaseDetector {
         LOG.info(String.format("Detected unsaturated component with low confidence %s: current "
                 + "average processing " + "rate is %f, previous observed maximum average rate is "
                 + "%f",
-            compMetrics.getComponentName(), currentStats.getMetricAvg(),
+            compName, currentStats.getMetricAvg(),
             processingRateStats.get().getMetricAvg()));
         result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF.text(), compMetrics,
             processingRateStats.get()));
       }
-
     }
     return result;
   }

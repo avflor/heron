@@ -30,7 +30,6 @@ import com.microsoft.dhalion.resolver.Action;
 
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.HealthManagerEvents.ContainerRestart;
-import com.twitter.heron.healthmgr.common.PhysicalPlanProvider;
 import com.twitter.heron.proto.scheduler.Scheduler.RestartTopologyRequest;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
 
@@ -41,7 +40,6 @@ import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName
 public class RestartContainerResolver implements IResolver {
   private static final Logger LOG = Logger.getLogger(RestartContainerResolver.class.getName());
 
-  private final PhysicalPlanProvider physicalPlanProvider;
   private final EventManager eventManager;
   private final String topologyName;
   private final ISchedulerClient schedulerClient;
@@ -49,10 +47,9 @@ public class RestartContainerResolver implements IResolver {
 
   @Inject
   public RestartContainerResolver(@Named(CONF_TOPOLOGY_NAME) String topologyName,
-                                  PhysicalPlanProvider physicalPlanProvider, EventManager eventManager,
-                                  ISchedulerClient schedulerClient, HealthPolicyConfig policyConfig) {
+                                  EventManager eventManager, ISchedulerClient schedulerClient,
+                                  HealthPolicyConfig policyConfig) {
     this.topologyName = topologyName;
-    this.physicalPlanProvider = physicalPlanProvider;
     this.eventManager = eventManager;
     this.schedulerClient = schedulerClient;
     this.noiseFilterMillis = (int) policyConfig.getConfig(CONF_NOISE_FILTER, 20);

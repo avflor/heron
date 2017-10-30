@@ -26,7 +26,6 @@ import org.junit.Test;
 
 import com.twitter.heron.healthmgr.TestUtils;
 
-
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_EXE_COUNT;
 import static org.junit.Assert.assertEquals;
@@ -95,16 +94,18 @@ public class OverProvisioningDiagnoserTest {
 
   private void validateDiagnosisWithSmallQueue(Diagnosis result) {
     assertEquals(1, result.getSymptoms().size());
-    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponent();
+    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponentMetrics();
     assertEquals(1,
-        data.getMetricValueSum("container_1_bolt_0", METRIC_BUFFER_SIZE.text()).intValue());
+        data.getMetrics("", "container_1_bolt_0", METRIC_BUFFER_SIZE.text())
+            .get().getValueSum().intValue());
   }
 
   private void validateDiagnosisWithUnsaturatedComponent(Diagnosis result) {
     assertEquals(1, result.getSymptoms().size());
-    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponent();
+    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponentMetrics();
 
     assertEquals(100,
-        data.getMetricValueSum("container_1_bolt_0", METRIC_EXE_COUNT.text()).intValue());
+        data.getMetrics("", "container_1_bolt_0", METRIC_EXE_COUNT.text())
+            .get().getValueSum().intValue());
   }
 }

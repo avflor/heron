@@ -44,7 +44,8 @@ public class PhysicalPlanProvider implements Provider<PhysicalPlan> {
 
   @Inject
   public PhysicalPlanProvider(SchedulerStateManagerAdaptor stateManagerAdaptor,
-      EventManager eventManager, @Named(CONF_TOPOLOGY_NAME) String topologyName) {
+                              EventManager eventManager,
+                              @Named(CONF_TOPOLOGY_NAME) String topologyName) {
     this.stateManagerAdaptor = stateManagerAdaptor;
     this.topologyName = topologyName;
     eventManager.addEventListener(TopologyUpdate.class, new EventHandler<TopologyUpdate>() {
@@ -53,8 +54,7 @@ public class PhysicalPlanProvider implements Provider<PhysicalPlan> {
        */
       @Override
       public synchronized void onEvent(TopologyUpdate event) {
-        LOG.info(
-            "Received topology update event, invalidating cached PhysicalPlan: " + event.getName());
+        LOG.info("Received topology update event, invalidating cached PhysicalPlan: " + event);
         physicalPlan = null;
       }
     });
@@ -64,8 +64,7 @@ public class PhysicalPlanProvider implements Provider<PhysicalPlan> {
        */
       @Override
       public synchronized void onEvent(ContainerRestart event) {
-        LOG.info("Received conatiner restart event, invalidating cached PhysicalPlan: "
-            + event.getName());
+        LOG.info("Received conatiner restart event, invalidating cached PhysicalPlan: " + event);
         physicalPlan = null;
       }
     });
