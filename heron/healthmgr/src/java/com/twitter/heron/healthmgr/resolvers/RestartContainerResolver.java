@@ -24,6 +24,7 @@ import com.microsoft.dhalion.api.IResolver;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.diagnoser.Diagnosis;
 import com.microsoft.dhalion.events.EventManager;
+import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.InstanceMetrics;
 import com.microsoft.dhalion.resolver.Action;
 
@@ -36,7 +37,6 @@ import com.twitter.heron.scheduler.client.ISchedulerClient;
 import static com.twitter.heron.healthmgr.HealthManager.CONF_TOPOLOGY_NAME;
 import static com.twitter.heron.healthmgr.detectors.BackPressureDetector.CONF_NOISE_FILTER;
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_SLOW_INSTANCE;
-import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 
 public class RestartContainerResolver implements IResolver {
   private static final Logger LOG = Logger.getLogger(RestartContainerResolver.class.getName());
@@ -49,8 +49,8 @@ public class RestartContainerResolver implements IResolver {
 
   @Inject
   public RestartContainerResolver(@Named(CONF_TOPOLOGY_NAME) String topologyName,
-      PhysicalPlanProvider physicalPlanProvider, EventManager eventManager,
-      ISchedulerClient schedulerClient, HealthPolicyConfig policyConfig) {
+                                  PhysicalPlanProvider physicalPlanProvider, EventManager eventManager,
+                                  ISchedulerClient schedulerClient, HealthPolicyConfig policyConfig) {
     this.topologyName = topologyName;
     this.physicalPlanProvider = physicalPlanProvider;
     this.eventManager = eventManager;
@@ -64,20 +64,21 @@ public class RestartContainerResolver implements IResolver {
 
     for (Diagnosis diagnoses : diagnosis) {
       Symptom bpSymptom = diagnoses.getSymptoms().get(SYMPTOM_SLOW_INSTANCE.text());
-      if (bpSymptom == null || bpSymptom.getComponents().isEmpty()) {
+      if (bpSymptom == null || bpSymptom.getComponentMetrics().getMetrics().isEmpty()) {
         // nothing to fix as there is no back pressure
         continue;
       }
 
-      if (bpSymptom.getComponents().size() > 1) {
+      ComponentMetrics compMetrics = bpSymptom.getComponentMetrics();
+      if (compMetrics.getComponentNames().size() > 1) {
         throw new UnsupportedOperationException("Multiple components with back pressure symptom");
       }
 
       // want to know which stmgr has backpressure
       String stmgrId = null;
-      for (InstanceMetrics im : bpSymptom.getComponent().getMetrics().values()) {
-        if (im.hasMetricAboveLimit(METRIC_BACK_PRESSURE.text(), noiseFilterMillis)) {
-          String instanceId = im.getName();
+      for (InstanceMetrics im : compMetrics.getMetrics()) {
+        if (im.getValueSum() > noiseFilterMillis) {
+          String instanceId = im.getInstanceName();
           int fromIndex = instanceId.indexOf('_') + 1;
           int toIndex = instanceId.indexOf('_', fromIndex);
           stmgrId = instanceId.substring(fromIndex, toIndex);
@@ -87,9 +88,9 @@ public class RestartContainerResolver implements IResolver {
       LOG.info("Restarting container: " + stmgrId);
       boolean b = schedulerClient.restartTopology(
           RestartTopologyRequest.newBuilder()
-          .setContainerIndex(Integer.valueOf(stmgrId))
-          .setTopologyName(topologyName)
-          .build());
+              .setContainerIndex(Integer.valueOf(stmgrId))
+              .setTopologyName(topologyName)
+              .build());
       LOG.info("Restarted container result: " + b);
 
       ContainerRestart action = new ContainerRestart();

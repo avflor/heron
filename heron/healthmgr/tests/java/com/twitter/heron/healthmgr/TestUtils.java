@@ -19,7 +19,6 @@ import java.util.List;
 
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
-import com.microsoft.dhalion.metrics.InstanceMetrics;
 
 import com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName;
 import com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName;
@@ -48,17 +47,12 @@ public class TestUtils {
     return createSymptom(SYMPTOM_BACK_PRESSURE, METRIC_BACK_PRESSURE, bpValues);
   }
 
-  private static void addInstanceMetric(ComponentMetrics metrics, int i, double val, String metric) {
-    InstanceMetrics instanceMetric = new InstanceMetrics("container_1_bolt_" + i, metric, val);
-    metrics.addInstanceMetric(instanceMetric);
-  }
-
-  private static Symptom createSymptom(SymptomName symptom, MetricName metric, int... values) {
-    ComponentMetrics compMetrics = new ComponentMetrics("bolt");
-    for (int i = 0; i < values.length; i++) {
-      addInstanceMetric(compMetrics, i, values[i], metric.text());
+  private static Symptom createSymptom(SymptomName symptom, MetricName metric, int... vals) {
+    ComponentMetrics metrics = new ComponentMetrics();
+    for (int i = 0; i < vals.length; i++) {
+      metrics.addMetric("bolt", "container_1_bolt_" + i, metric.text(), vals[i]);
     }
-    return new Symptom(symptom.text(), compMetrics);
+    return new Symptom(symptom.text(), metrics);
   }
 
   private static List<Symptom> createListFromSymptom(Symptom symptom) {

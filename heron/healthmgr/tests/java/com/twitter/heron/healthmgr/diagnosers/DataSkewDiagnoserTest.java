@@ -49,8 +49,9 @@ public class DataSkewDiagnoserTest {
     assertEquals(1, result.getSymptoms().size());
     Symptom symptom = result.getSymptoms().values().iterator().next();
 
-    assertEquals(123, symptom.getComponent()
-        .getMetricValueSum("container_1_bolt_0", METRIC_BACK_PRESSURE.text()).intValue());
+    assertEquals(123, symptom.getComponentMetrics()
+        .getMetrics("bolt", "container_1_bolt_0", METRIC_BACK_PRESSURE.text())
+        .get().getValueSum().intValue());
   }
 
   @Test

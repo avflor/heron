@@ -47,7 +47,6 @@ import com.twitter.heron.spi.packing.PackingPlanProtoSerializer;
 import com.twitter.heron.spi.utils.ReflectionUtils;
 
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_UNDER_PROVISIONING;
-import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 
 
 public class ScaleUpResolver implements IResolver {
@@ -76,19 +75,20 @@ public class ScaleUpResolver implements IResolver {
   public List<Action> resolve(List<Diagnosis> diagnosis) {
     for (Diagnosis diagnoses : diagnosis) {
       Symptom bpSymptom = diagnoses.getSymptoms().get(SYMPTOM_UNDER_PROVISIONING.text());
-      if (bpSymptom == null || bpSymptom.getComponents().isEmpty()) {
+      if (bpSymptom == null || bpSymptom.getComponentMetrics().getMetrics().isEmpty()) {
         // nothing to fix as there is no back pressure
         continue;
       }
 
-      if (bpSymptom.getComponents().size() > 1) {
+      ComponentMetrics compMetrics = bpSymptom.getComponentMetrics();
+      if (compMetrics.getComponentNames().size() > 1) {
         throw new UnsupportedOperationException("Multiple components with back pressure symptom");
       }
 
-      ComponentMetrics bpComponent = bpSymptom.getComponent();
-      int newParallelism = computeScaleUpFactor(bpComponent);
+      String bpComponent = compMetrics.getComponentNames().iterator().next();
+      int newParallelism = computeScaleUpFactor(compMetrics);
       Map<String, Integer> changeRequest = new HashMap<>();
-      changeRequest.put(bpComponent.getName(), newParallelism);
+      changeRequest.put(bpComponent, newParallelism);
 
       PackingPlan currentPackingPlan = packingPlanProvider.get();
       PackingPlan newPlan = buildNewPackingPlan(changeRequest, currentPackingPlan);
@@ -125,10 +125,11 @@ public class ScaleUpResolver implements IResolver {
   @VisibleForTesting
   int computeScaleUpFactor(ComponentMetrics componentMetrics) {
     double totalCompBpTime = 0;
-    String compName = componentMetrics.getName();
-    for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics().values()) {
-      double instanceBp = instanceMetrics.getMetricValueSum(METRIC_BACK_PRESSURE.text());
-      LOG.info(String.format("Instance:%s, bpTime:%.0f", instanceMetrics.getName(), instanceBp));
+    String compName = componentMetrics.getComponentNames().iterator().next();
+    for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics()) {
+      double instanceBp = instanceMetrics.getValueSum();
+      LOG.info(String.format("Instance:%s, bpTime:%.0f",
+          instanceMetrics.getInstanceName(), instanceBp));
       totalCompBpTime += instanceBp;
     }
 

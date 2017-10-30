@@ -15,9 +15,7 @@
 package com.twitter.heron.healthmgr.diagnosers;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.microsoft.dhalion.api.IDiagnoser;
 import com.microsoft.dhalion.detector.Symptom;
@@ -59,30 +57,29 @@ public abstract class BaseDiagnoser implements IDiagnoser {
     return getFilteredSymptoms(symptoms, SYMPTOM_BACK_PRESSURE);
   }
 
-  Map<String, ComponentMetrics> getProcessingRateSkewComponents(List<Symptom> symptoms) {
+  ComponentMetrics getProcessingRateSkewComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_PROCESSING_RATE_SKEW);
   }
 
-  Map<String, ComponentMetrics> getWaitQDisparityComponents(List<Symptom> symptoms) {
+  ComponentMetrics getWaitQDisparityComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_WAIT_Q_DISPARITY);
   }
 
   private List<Symptom> getFilteredSymptoms(List<Symptom> symptoms, SymptomName type) {
     List<Symptom> result = new ArrayList<>();
     for (Symptom symptom : symptoms) {
-      if (symptom.getName().equals(type.text())) {
+      if (symptom.getSymptomName().equals(type.text())) {
         result.add(symptom);
       }
     }
     return result;
   }
 
-  private Map<String, ComponentMetrics> getFilteredComponents(List<Symptom> symptoms,
-                                                              SymptomName type) {
-    Map<String, ComponentMetrics> result = new HashMap<>();
+  private ComponentMetrics getFilteredComponents(List<Symptom> symptoms, SymptomName type) {
+    ComponentMetrics result = new ComponentMetrics();
     for (Symptom symptom : symptoms) {
-      if (symptom.getName().equals(type.text())) {
-        result.putAll(symptom.getComponents());
+      if (symptom.getSymptomName().equals(type.text())) {
+        result = ComponentMetrics.merge(result, symptom.getComponentMetrics());
       }
     }
     return result;

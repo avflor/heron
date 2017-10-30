@@ -34,12 +34,11 @@ public class UnderProvisioningDiagnoser extends BaseDiagnoser {
   @Override
   public Diagnosis diagnose(List<Symptom> symptoms) {
     List<Symptom> bpSymptoms = getBackPressureSymptoms(symptoms);
-    Map<String, ComponentMetrics> processingRateSkewComponents =
-        getProcessingRateSkewComponents(symptoms);
-    Map<String, ComponentMetrics> waitQDisparityComponents = getWaitQDisparityComponents(symptoms);
+    ComponentMetrics processingRateSkewMetrics = getProcessingRateSkewComponents(symptoms);
+    ComponentMetrics waitQDisparityMetrics = getWaitQDisparityComponents(symptoms);
 
-    if (bpSymptoms.isEmpty() || !processingRateSkewComponents.isEmpty()
-        || !waitQDisparityComponents.isEmpty()) {
+    if (bpSymptoms.isEmpty() || !processingRateSkewMetrics.getMetrics().isEmpty()
+        || !waitQDisparityMetrics.getMetrics().isEmpty()) {
       // Since there is no back pressure or similar processing rates
       // and buffer sizes, no action is needed
       return null;
@@ -47,13 +46,18 @@ public class UnderProvisioningDiagnoser extends BaseDiagnoser {
       // TODO handle cases where multiple detectors create back pressure symptom
       throw new IllegalStateException("Multiple back-pressure symptoms case");
     }
-    ComponentMetrics bpMetrics = bpSymptoms.iterator().next().getComponent();
+
+    ComponentMetrics bpMetrics = bpSymptoms.iterator().next().getComponentMetrics();
+    if (bpMetrics.getComponentNames().size() != 1) {
+      // TODO handle cases where multiple detectors create back pressure symptom
+      throw new IllegalStateException("Multiple back-pressure symptoms case");
+    }
+    String compCausingBp = bpMetrics.getComponentNames().iterator().next();
 
     ComponentMetricsHelper compStats = new ComponentMetricsHelper(bpMetrics);
     compStats.computeBpStats();
     LOG.info(String.format("UNDER_PROVISIONING: %s back-pressure(%s) and similar processing rates "
-            + "and buffer sizes",
-        bpMetrics.getName(), compStats.getTotalBackpressure()));
+            + "and buffer sizes", compCausingBp, compStats.getTotalBackpressure()));
 
 
     Symptom resultSymptom = new Symptom(SYMPTOM_UNDER_PROVISIONING.text(), bpMetrics);

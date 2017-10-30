@@ -32,7 +32,6 @@ public class UnderProvisioningDiagnoserTest {
   @Test
   public void diagnosisWhen1Of1InstanceInBP() {
     List<Symptom> symptoms = TestUtils.createBpSymptomList(123, 0);
-    //symptoms.add(TestUtils.createLargeWaitQSymptom(5000));
     Diagnosis result = new UnderProvisioningDiagnoser().diagnose(symptoms);
     validateDiagnosis(result);
   }
@@ -56,9 +55,9 @@ public class UnderProvisioningDiagnoserTest {
 
   private void validateDiagnosis(Diagnosis result) {
     assertEquals(1, result.getSymptoms().size());
-    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponent();
+    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponentMetrics();
     assertEquals(123,
-        data.getMetricValueSum("container_1_bolt_0", METRIC_BACK_PRESSURE.text())
-            .intValue());
+        data.getMetrics("bolt", "container_1_bolt_0", METRIC_BACK_PRESSURE.text())
+            .get().getValueSum().intValue());
   }
 }
