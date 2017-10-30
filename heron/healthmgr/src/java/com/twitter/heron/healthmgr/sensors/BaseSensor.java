@@ -15,9 +15,7 @@
 package com.twitter.heron.healthmgr.sensors;
 
 import java.time.Duration;
-import java.util.Map;
 
-import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.sensor.SensorImpl;
 
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
@@ -27,20 +25,18 @@ import com.twitter.heron.healthmgr.common.TopologyProvider;
 public abstract class BaseSensor extends SensorImpl {
   static final Duration DEFAULT_METRIC_DURATION = Duration.ofSeconds(300);
   static final String COMPONENT_STMGR = "__stmgr__";
-  protected final TopologyProvider topologyProvider;
   private final HealthPolicyConfig config;
+  protected final TopologyProvider topologyProvider;
   private Duration duration;
-  BaseSensor(TopologyProvider topologyProvider, HealthPolicyConfig config,
-             String metricName, String confPrefix) {
+
+  BaseSensor(TopologyProvider topologyProvider,
+             HealthPolicyConfig config,
+             String metricName,
+             String confPrefix) {
     super(metricName);
     this.config = config;
     duration = getDurationFromConfig(confPrefix);
     this.topologyProvider = topologyProvider;
-  }
-
-  @Override
-  public Map<String, ComponentMetrics> get() {
-    return get(topologyProvider.getBoltNames());
   }
 
   /**

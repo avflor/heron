@@ -15,8 +15,6 @@
 
 package com.twitter.heron.healthmgr.sensors;
 
-import java.util.HashMap;
-import java.util.Map;
 import javax.inject.Inject;
 
 import com.microsoft.dhalion.api.MetricsProvider;
@@ -45,28 +43,23 @@ public class ExecuteCountSensor extends BaseSensor {
   }
 
   @Override
-  public Map<String, ComponentMetrics> fetchMetrics() {
-    this.metrics = readMetrics(topologyProvider.getBoltNames());
-    return this.metrics;
+  public ComponentMetrics fetchMetrics() {
+    String[] boltNames = topologyProvider.getBoltNames();
+    metrics = metricsProvider.getComponentMetrics(getMetricName(),
+        getDuration(),
+        boltNames);
+    return metrics;
   }
 
-  public Map<String, ComponentMetrics> readMetrics(String... boltNames) {
-    Map<String, ComponentMetrics> processingRates = metricsProvider.getComponentMetrics
-        (getMetricName(),
-            getDuration(),
-            boltNames);
-    updateStats(processingRates);
-    return processingRates;
-  }
-
-  private void updateStats(Map<String, ComponentMetrics> processingRates) {
-    for (ComponentMetrics compMetrics : processingRates.values()) {
+  private void updateStats(ComponentMetrics processingRates) {
+    for (String compName : processingRates.getComponentNames()) {
+      ComponentMetrics compMetrics = processingRates.filterByComponent(compName);
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       MetricsStats currentStats = compStats.computeStats(MetricName.
           METRIC_EXE_COUNT.text());
-      MetricsStats componentStats = this.stats.get(compMetrics.getComponentName());
+      MetricsStats componentStats = this.stats.get(compName);
       if (componentStats == null) {
-        this.stats.put(compMetrics.getComponentName(), currentStats);
+        this.stats.put(compName, currentStats);
       } else {
         if (currentStats.getMetricMin() < componentStats.getMetricMin()) {
           componentStats.setMetricMin(currentStats.getMetricMin());
@@ -78,8 +71,7 @@ public class ExecuteCountSensor extends BaseSensor {
           componentStats.setMetricAvg(currentStats.getMetricAvg());
         }
       }
-      this.stats.put(compMetrics.getComponentName(), componentStats);
+      this.stats.put(compName, componentStats);
     }
   }
-
 }

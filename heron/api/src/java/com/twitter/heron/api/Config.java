@@ -1,4 +1,4 @@
-// Copyright 2016 Twitter. All rights reserved.
+// Copyright 2017 Twitter. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 
 package com.twitter.heron.api;
 
@@ -50,10 +69,10 @@ public class Config extends HashMap<String, Object> {
    */
   public static final String TOPOLOGY_COMPONENT_JVMOPTS = "topology.component.jvmopts";
   /**
-   * How often a tick tuple from the "__system" component and "__tick" stream should be sent
+   * How often (in milliseconds) a tick tuple from the "__system" component and "__tick" stream should be sent
    * to tasks. Meant to be used as a component-specific configuration.
    */
-  public static final String TOPOLOGY_TICK_TUPLE_FREQ_SECS = "topology.tick.tuple.freq.secs";
+  public static final String TOPOLOGY_TICK_TUPLE_FREQ_MS = "topology.tick.tuple.freq.ms";
   /**
    * True if Heron should timeout messages or not. Defaults to true. This is meant to be used
    * in unit tests to prevent tuples from being accidentally timed out during the test.
@@ -129,7 +148,7 @@ public class Config extends HashMap<String, Object> {
     ATLEAST_ONCE,
     /**
      * Heron guarantees that each emitted tuple is seen by the downstream components
-     * exactly once. This is achieved via distributed snapshotting approach is described at
+     * effectively once. This is achieved via distributed snapshotting approach is described at
      * https://docs.google.com/document/d/1pNuE77diSrYHb7vHPuPO3DZqYdcxrhywH_f7loVryCI/edit
      * In this mode Heron will try to take the snapshots of
      * all of the components of the topology every
@@ -137,7 +156,7 @@ public class Config extends HashMap<String, Object> {
      * any component or detection of any network failure, Heron will initiate a recovery
      * mechanism to revert the topology to the last globally consistent checkpoint
      */
-    EXACTLY_ONCE;
+    EFFECTIVELY_ONCE;
   }
   /**
    * A Heron topology can be run in any one of the TopologyReliabilityMode
@@ -180,6 +199,11 @@ public class Config extends HashMap<String, Object> {
    */
   public static final String TOPOLOGY_CONTAINER_PADDING_PERCENTAGE
       = "topology.container.padding.percentage";
+  /**
+   * Amount of ram to pad each container.
+   * In bytes.
+   */
+  public static final String TOPOLOGY_CONTAINER_RAM_PADDING = "topology.container.ram.padding";
   /**
    * Per component ram requirement.  The format of this flag is something like
    * spout0:12434,spout1:345353,bolt1:545356.
@@ -235,6 +259,13 @@ public class Config extends HashMap<String, Object> {
   public static final String TOPOLOGY_UPDATE_REACTIVATE_WAIT_SECS =
       "topology.update.reactivate.wait.secs";
 
+  /**
+   * Topology-specific environment properties to be added to an Heron instance.
+   * This is added to the existing environment (that of the Heron instance).
+   * This variable contains Map<String, String>
+   */
+  public static final String TOPOLOGY_ENVIRONMENT = "topology.environment";
+
   private static final long serialVersionUID = 2550967708478837032L;
   // We maintain a list of all user exposed vars
   private static Set<String> apiVars = new HashSet<>();
@@ -248,7 +279,7 @@ public class Config extends HashMap<String, Object> {
     apiVars.add(TOPOLOGY_WORKER_CHILDOPTS);
     apiVars.add(TOPOLOGY_COMPONENT_JVMOPTS);
     apiVars.add(TOPOLOGY_SERIALIZER_CLASSNAME);
-    apiVars.add(TOPOLOGY_TICK_TUPLE_FREQ_SECS);
+    apiVars.add(TOPOLOGY_TICK_TUPLE_FREQ_MS);
     apiVars.add(TOPOLOGY_ENABLE_MESSAGE_TIMEOUTS);
     apiVars.add(TOPOLOGY_CONTAINER_CPU_REQUESTED);
     apiVars.add(TOPOLOGY_CONTAINER_DISK_REQUESTED);
@@ -257,6 +288,7 @@ public class Config extends HashMap<String, Object> {
     apiVars.add(TOPOLOGY_CONTAINER_MAX_DISK_HINT);
     apiVars.add(TOPOLOGY_CONTAINER_MAX_RAM_HINT);
     apiVars.add(TOPOLOGY_CONTAINER_PADDING_PERCENTAGE);
+    apiVars.add(TOPOLOGY_CONTAINER_RAM_PADDING);
     apiVars.add(TOPOLOGY_COMPONENT_RAMMAP);
     apiVars.add(TOPOLOGY_STATEFUL_START_CLEAN);
     apiVars.add(TOPOLOGY_STATEFUL_CHECKPOINT_INTERVAL_SECONDS);
@@ -333,7 +365,11 @@ public class Config extends HashMap<String, Object> {
   }
 
   public static void setTickTupleFrequency(Map<String, Object> conf, int seconds) {
-    conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, Integer.toString(seconds));
+    setTickTupleFrequencyMs(conf, (long) (seconds * 1000));
+  }
+
+  public static void setTickTupleFrequencyMs(Map<String, Object> conf, long millis) {
+    conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_MS, millis);
   }
 
   public static void setTopologyReliabilityMode(Map<String, Object> conf,
@@ -387,6 +423,10 @@ public class Config extends HashMap<String, Object> {
 
   public static void setContainerPaddingPercentage(Map<String, Object> conf, int percentage) {
     conf.put(Config.TOPOLOGY_CONTAINER_PADDING_PERCENTAGE, Integer.toString(percentage));
+  }
+
+  public static void setContainerRamPadding(Map<String, Object> conf, ByteAmount nbytes) {
+    conf.put(Config.TOPOLOGY_CONTAINER_RAM_PADDING, Long.toString(nbytes.asBytes()));
   }
 
   public static void setComponentRamMap(Map<String, Object> conf, String ramMap) {
@@ -461,6 +501,11 @@ public class Config extends HashMap<String, Object> {
 
   public static void setTopologyStatefulStartClean(Map<String, Object> conf, boolean clean) {
     conf.put(Config.TOPOLOGY_STATEFUL_START_CLEAN, String.valueOf(clean));
+  }
+
+  @SuppressWarnings("rawtypes")
+  public static void setEnvironment(Map<String, Object> conf, Map env) {
+    conf.put(Config.TOPOLOGY_ENVIRONMENT, env);
   }
 
   public void setDebug(boolean isOn) {
@@ -548,6 +593,10 @@ public class Config extends HashMap<String, Object> {
 
   public void setContainerPaddingPercentage(int percentage) {
     setContainerPaddingPercentage(this, percentage);
+  }
+
+  public void setContainerRamPadding(ByteAmount nbytes) {
+    setContainerRamPadding(this, nbytes);
   }
 
   public void setComponentRamMap(String ramMap) {

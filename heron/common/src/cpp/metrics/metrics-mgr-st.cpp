@@ -34,7 +34,7 @@ namespace heron {
 namespace common {
 
 MetricsMgrSt::MetricsMgrSt(sp_int32 _metricsmgr_port, sp_int32 _interval, EventLoop* eventLoop) {
-  options_.set_host("localhost");
+  options_.set_host("127.0.0.1");
   options_.set_port(_metricsmgr_port);
   options_.set_max_packet_size(1024 * 1024);
   options_.set_socket_family(PF_INET);
@@ -55,10 +55,10 @@ MetricsMgrSt::~MetricsMgrSt() {
 }
 
 void MetricsMgrSt::Start(const sp_string& _my_hostname, sp_int32 _my_port,
-     const sp_string& _component, const sp_string& _task_id) {
+     const sp_string& _component_id, const sp_string& _instance_id) {
   CHECK(client_ == nullptr) << "MetricsMgrClient started already";
-  client_ = new MetricsMgrClient(_my_hostname, _my_port, _component, _task_id,
-                                 eventLoop_, options_);
+  client_ = new MetricsMgrClient(_my_hostname, _my_port, _component_id, _instance_id,
+                                 -1, eventLoop_, options_);
 }
 
 void MetricsMgrSt::RefreshTMasterLocation(const proto::tmaster::TMasterLocation& location) {

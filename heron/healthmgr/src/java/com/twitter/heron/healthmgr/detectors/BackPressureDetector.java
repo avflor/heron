@@ -17,7 +17,6 @@ package com.twitter.heron.healthmgr.detectors;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.inject.Inject;
@@ -33,7 +32,7 @@ import com.twitter.heron.healthmgr.sensors.BackPressureSensor;
 import static com.twitter.heron.healthmgr.detectors.BaseDetector.SymptomName.SYMPTOM_BACK_PRESSURE;
 
 public class BackPressureDetector implements IDetector {
-  static final String CONF_NOISE_FILTER = "BackPressureDetector.noiseFilterMillis";
+  public static final String CONF_NOISE_FILTER = "BackPressureDetector.noiseFilterMillis";
 
   private static final Logger LOG = Logger.getLogger(BackPressureDetector.class.getName());
   private final BackPressureSensor bpSensor;
@@ -56,13 +55,14 @@ public class BackPressureDetector implements IDetector {
   public List<Symptom> detect() {
     ArrayList<Symptom> result = new ArrayList<>();
 
-    Map<String, ComponentMetrics> backpressureMetrics = bpSensor.get();
-    for (ComponentMetrics compMetrics : backpressureMetrics.values()) {
+    ComponentMetrics backpressureMetrics = bpSensor.getMetrics();
+    for (String compName : backpressureMetrics.getComponentNames()) {
+      ComponentMetrics compMetrics = backpressureMetrics.filterByComponent(compName);
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       compStats.computeBpStats();
       if (compStats.getTotalBackpressure() > noiseFilterMillis) {
         LOG.info(String.format("Detected back pressure for %s, total back pressure is %f",
-            compMetrics.getComponentName(), compStats.getTotalBackpressure()));
+            compName, compStats.getTotalBackpressure()));
         result.add(new Symptom(SYMPTOM_BACK_PRESSURE.text(), compMetrics));
       }
     }

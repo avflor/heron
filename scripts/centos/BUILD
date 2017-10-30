@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("/tools/rules/pex_rules", "pex_binary")
+load("/tools/rules/pex/pex_rules", "pex_binary")
 
 release_version = "unversioned"
 
@@ -35,6 +35,7 @@ genrule(
         ":hstmgr",
         ":htmaster",
         ":hpyinstance",
+        ":hcppinstance",
         ":hscheduler",
         ":hscheduler-aurora",
         ":hscheduler-local",
@@ -58,6 +59,7 @@ genrule(
         "--cp $(location hstmgr)                   heron-core/bin/heron-stmgr",
         "--cp $(location htmaster)                 heron-core/bin/heron-tmaster",
         "--cp $(location hpyinstance)              heron-core/bin/heron-python-instance",
+        "--cp $(location hcppinstance)             heron-core/bin/heron-cpp-instance",
         "--cp $(location hscheduler)               heron-core/lib/scheduler/heron-scheduler.jar",
         "--cp $(location hscheduler-aurora)        heron-core/lib/scheduler/heron-aurora-scheduler.jar",
         "--cp $(location hscheduler-local)         heron-core/lib/scheduler/heron-local-scheduler.jar",
@@ -120,7 +122,7 @@ genrule(
         "--cp $(location conf-local-statemgr)        conf/local/statemgr.yaml",
         "--cp $(location conf-local-uploader)        conf/local/uploader.yaml",
         "--cp $(location heron-core)                 dist/heron-core.tar.gz",
-        "--cp $(location hexamples)                  examples/heron-examples.jar",
+        "--cp $(location hexamples)                  examples/heron-api-examples.jar",
         "--cp $(location hscheduler)                 lib/scheduler/heron-scheduler.jar",
         "--cp $(location hscheduler-aurora)          lib/scheduler/heron-aurora-scheduler.jar",
         "--cp $(location hscheduler-local)           lib/scheduler/heron-local-scheduler.jar",
@@ -230,7 +232,7 @@ filegroup(
 
 filegroup(
     name = "hexamples",
-    srcs = ["//heron/examples/src/java:heron-examples"],
+    srcs = ["//examples/src/java:heron-api-examples"],
 )
 
 filegroup(
@@ -240,7 +242,12 @@ filegroup(
 
 filegroup(
     name = "hpyinstance",
-    srcs = ["//heron/instance/src/python/instance:heron-python-instance"],
+    srcs = ["//heron/instance/src/python:heron-python-instance"],
+)
+
+filegroup(
+    name = "hcppinstance",
+    srcs = ["//heron/instance/src/cpp:heron-cpp-instance"],
 )
 
 filegroup(
@@ -380,7 +387,7 @@ filegroup(
 
 filegroup(
     name = "hstorm",
-    srcs = ["//heron/storm/src/java:heron-storm"],
+    srcs = ["//storm-compatibility/src/java:heron-storm"],
 )
 
 filegroup(

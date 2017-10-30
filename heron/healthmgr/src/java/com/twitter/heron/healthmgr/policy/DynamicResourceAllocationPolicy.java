@@ -93,7 +93,7 @@ public class DynamicResourceAllocationPolicy extends HealthPolicyImpl
         dataSkewDiagnoser, slowInstanceDiagnoser);
 
     setPolicyExecutionInterval(TimeUnit.MILLISECONDS,
-        (Long) policyConfig.getConfig(HEALTH_POLICY_INTERVAL.key(), 60000));
+        (int) policyConfig.getConfig(HEALTH_POLICY_INTERVAL.key(), 60000));
 
     eventManager.addEventListener(TopologyUpdate.class, this);
   }

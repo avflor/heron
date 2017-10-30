@@ -35,36 +35,36 @@ public class ComponentMetricsHelperTest {
     InstanceMetrics instanceMetrics;
     Map<Instant, Double> bufferSizes;
 
-    compMetrics = new ComponentMetrics("bolt");
+    compMetrics = new ComponentMetrics();
 
-    instanceMetrics = new InstanceMetrics("i1");
+    instanceMetrics = new InstanceMetrics("bolt", "i1", METRIC_BUFFER_SIZE.text());
     bufferSizes = new HashMap<>();
     bufferSizes.put(Instant.ofEpochSecond(1497892210), 0.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892270), 300.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892330), 600.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892390), 900.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892450), 1200.0);
-    instanceMetrics.addMetric(METRIC_BUFFER_SIZE.text(), bufferSizes);
+    instanceMetrics.addValues(bufferSizes);
 
-    compMetrics.addInstanceMetric(instanceMetrics);
+    compMetrics.add(instanceMetrics);
 
-    instanceMetrics = new InstanceMetrics("i2");
+    instanceMetrics = new InstanceMetrics("bolt", "i2", METRIC_BUFFER_SIZE.text());
     bufferSizes = new HashMap<>();
     bufferSizes.put(Instant.ofEpochSecond(1497892270), 0.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892330), 180.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892390), 360.0);
     bufferSizes.put(Instant.ofEpochSecond(1497892450), 540.0);
-    instanceMetrics.addMetric(METRIC_BUFFER_SIZE.text(), bufferSizes);
+    instanceMetrics.addValues(bufferSizes);
 
-    compMetrics.addInstanceMetric(instanceMetrics);
+    compMetrics.add(instanceMetrics);
 
     ComponentMetricsHelper helper = new ComponentMetricsHelper(compMetrics);
     helper.computeBufferSizeTrend();
     assertEquals(5, helper.getMaxBufferChangeRate(), 0.1);
 
-    HashMap<String, InstanceMetrics> metrics = compMetrics.getInstanceData();
-    assertEquals(1, metrics.get("i1").getMetrics().get(METRIC_WAIT_Q_GROWTH_RATE.text()).size());
-    assertEquals(5, metrics.get("i1").getMetricValueSum(METRIC_WAIT_Q_GROWTH_RATE.text()), 0.1);
-    assertEquals(3, metrics.get("i2").getMetricValueSum(METRIC_WAIT_Q_GROWTH_RATE.text()), 0.1);
+    assertEquals(5, compMetrics.getMetrics("bolt", "i1", METRIC_WAIT_Q_GROWTH_RATE.text())
+        .get().getValueSum(), 0.1);
+    assertEquals(3, compMetrics.getMetrics("bolt", "i2", METRIC_WAIT_Q_GROWTH_RATE.text())
+        .get().getValueSum(), 0.1);
   }
 }

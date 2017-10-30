@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+
 import javax.inject.Inject;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -46,7 +47,6 @@ import com.twitter.heron.spi.packing.PackingPlanProtoSerializer;
 import com.twitter.heron.spi.utils.ReflectionUtils;
 
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_UNDER_PROVISIONING;
-import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 
 
 public class ScaleUpResolver implements IResolver {
@@ -75,19 +75,20 @@ public class ScaleUpResolver implements IResolver {
   public List<Action> resolve(List<Diagnosis> diagnosis) {
     for (Diagnosis diagnoses : diagnosis) {
       Symptom bpSymptom = diagnoses.getSymptoms().get(SYMPTOM_UNDER_PROVISIONING.text());
-      if (bpSymptom == null || bpSymptom.getComponents().isEmpty()) {
+      if (bpSymptom == null || bpSymptom.getComponentMetrics().getMetrics().isEmpty()) {
         // nothing to fix as there is no back pressure
         continue;
       }
 
-      if (bpSymptom.getComponents().size() > 1) {
+      ComponentMetrics compMetrics = bpSymptom.getComponentMetrics();
+      if (compMetrics.getComponentNames().size() > 1) {
         throw new UnsupportedOperationException("Multiple components with back pressure symptom");
       }
 
-      ComponentMetrics bpComponent = bpSymptom.getComponent();
-      int newParallelism = computeScaleUpFactor(bpComponent);
+      String bpComponent = compMetrics.getComponentNames().iterator().next();
+      int newParallelism = computeScaleUpFactor(compMetrics);
       Map<String, Integer> changeRequest = new HashMap<>();
-      changeRequest.put(bpComponent.getComponentName(), newParallelism);
+      changeRequest.put(bpComponent, newParallelism);
 
       PackingPlan currentPackingPlan = packingPlanProvider.get();
       PackingPlan newPlan = buildNewPackingPlan(changeRequest, currentPackingPlan);
@@ -124,10 +125,11 @@ public class ScaleUpResolver implements IResolver {
   @VisibleForTesting
   int computeScaleUpFactor(ComponentMetrics componentMetrics) {
     double totalCompBpTime = 0;
-    String compName = componentMetrics.getComponentName();
-    for (InstanceMetrics instanceMetrics : componentMetrics.getInstanceData().values()) {
-      double instanceBp = instanceMetrics.getMetricValueSum(METRIC_BACK_PRESSURE.text());
-      LOG.info(String.format("Instance:%s, bpTime:%.0f", instanceMetrics.getName(), instanceBp));
+    String compName = componentMetrics.getComponentNames().iterator().next();
+    for (InstanceMetrics instanceMetrics : componentMetrics.getMetrics()) {
+      double instanceBp = instanceMetrics.getValueSum();
+      LOG.info(String.format("Instance:%s, bpTime:%.0f",
+          instanceMetrics.getInstanceName(), instanceBp));
       totalCompBpTime += instanceBp;
     }
 
@@ -140,7 +142,7 @@ public class ScaleUpResolver implements IResolver {
     double unusedCapacity = (1.0 * totalCompBpTime) / (1000 - totalCompBpTime);
     // scale up fencing: do not scale more than 4 times the current size
     unusedCapacity = unusedCapacity > 4.0 ? 4.0 : unusedCapacity;
-    int parallelism = (int) Math.ceil(componentMetrics.getInstanceData().size() * (1 + unusedCapacity));
+    int parallelism = (int) Math.ceil(componentMetrics.getMetrics().size() * (1 + unusedCapacity));
     LOG.info(String.format("Component's, %s, unused capacity is: %.3f. New parallelism: %d",
         compName, unusedCapacity, parallelism));
     return parallelism;

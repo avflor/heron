@@ -14,8 +14,7 @@
 
 package com.twitter.heron.healthmgr.sensors;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
 
 import com.microsoft.dhalion.api.MetricsProvider;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
@@ -34,50 +33,42 @@ import static org.mockito.Mockito.when;
 public class ExecuteCountSensorTest {
   @Test
   public void providesBoltExecutionCountMetrics() {
-
+    String metric = METRIC_EXE_COUNT.text();
     TopologyProvider topologyProvider = mock(TopologyProvider.class);
     when(topologyProvider.getBoltNames()).thenReturn(new String[]{"bolt-1", "bolt-2"});
 
     MetricsProvider metricsProvider = mock(MetricsProvider.class);
 
-    Map<String, ComponentMetrics> result = new HashMap<>();
-
-    ComponentMetrics metrics = new ComponentMetrics("bolt-1");
-    metrics.addInstanceMetric(createTestInstanceMetric("container_1_bolt-1_1", 123));
-    metrics.addInstanceMetric(createTestInstanceMetric("container_1_bolt-1_2", 345));
-    result.put("bolt-1", metrics);
-
-    metrics = new ComponentMetrics("bolt-2");
-    metrics.addInstanceMetric(createTestInstanceMetric("container_1_bolt-2_3", 321));
-    metrics.addInstanceMetric(createTestInstanceMetric("container_1_bolt-2_4", 543));
-    result.put("bolt-2", metrics);
+    ComponentMetrics metrics = new ComponentMetrics();
+    metrics.addMetric("bolt-1", "container_1_bolt-1_1", metric, 123);
+    metrics.addMetric("bolt-1", "container_1_bolt-1_2", metric, 345);
+    metrics.addMetric("bolt-2", "container_1_bolt-2_3", metric, 321);
+    metrics.addMetric("bolt-2", "container_1_bolt-2_4", metric, 543);
 
     when(metricsProvider
-        .getComponentMetrics(METRIC_EXE_COUNT.text(), DEFAULT_METRIC_DURATION, "bolt-1", "bolt-2"))
-        .thenReturn(result);
+        .getComponentMetrics(metric, DEFAULT_METRIC_DURATION, "bolt-1", "bolt-2"))
+        .thenReturn(metrics);
 
     ExecuteCountSensor executeCountSensor
         = new ExecuteCountSensor(topologyProvider, null, metricsProvider);
+    executeCountSensor.fetchMetrics();
+    ComponentMetrics componentMetrics = executeCountSensor.getMetrics();
+    assertEquals(2, componentMetrics.getComponentNames().size());
 
-    Map<String, ComponentMetrics> componentMetrics = executeCountSensor.fetchMetrics();
-    assertEquals(2, componentMetrics.size());
-    assertEquals(123, componentMetrics.get("bolt-1")
-        .getInstanceData("container_1_bolt-1_1")
-        .getMetricValueSum(METRIC_EXE_COUNT.text()).intValue());
-    assertEquals(345, componentMetrics.get("bolt-1")
-        .getInstanceData("container_1_bolt-1_2")
-        .getMetricValueSum(METRIC_EXE_COUNT.text()).intValue());
-    assertEquals(321, componentMetrics.get("bolt-2")
-        .getInstanceData("container_1_bolt-2_3")
-        .getMetricValueSum(METRIC_EXE_COUNT.text()).intValue());
-    assertEquals(543, componentMetrics.get("bolt-2")
-        .getInstanceData("container_1_bolt-2_4")
-        .getMetricValueSum(METRIC_EXE_COUNT.text()).intValue());
-  }
+    Optional<InstanceMetrics> instanceMetrics
+        = componentMetrics.getMetrics("bolt-1", "container_1_bolt-1_1", metric);
+    assertEquals(123, instanceMetrics.get().getValueSum().intValue());
 
-  private InstanceMetrics createTestInstanceMetric(String name, int value) {
-    InstanceMetrics instanceMetrics = new InstanceMetrics(name);
-    instanceMetrics.addMetric(METRIC_EXE_COUNT.text(), value);
-    return instanceMetrics;
+    instanceMetrics
+        = componentMetrics.getMetrics("bolt-1", "container_1_bolt-1_2", metric);
+    assertEquals(345, instanceMetrics.get().getValueSum().intValue());
+
+    instanceMetrics
+        = componentMetrics.getMetrics("bolt-2", "container_1_bolt-2_3", metric);
+    assertEquals(321, instanceMetrics.get().getValueSum().intValue());
+
+    instanceMetrics
+        = componentMetrics.getMetrics("bolt-2", "container_1_bolt-2_4", metric);
+    assertEquals(543, instanceMetrics.get().getValueSum().intValue());
   }
 }

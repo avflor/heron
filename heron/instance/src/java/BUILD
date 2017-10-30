@@ -13,6 +13,7 @@ instance_deps_files =  \
         "//heron/common/src/java:config-java",
         "//heron/common/src/java:network-java",
         "//heron/common/src/java:utils-java",
+        "@commons_cli_commons_cli//jar"
     ]
 
 java_library(
@@ -26,14 +27,9 @@ java_library(
 
 java_binary(
     name = "instance-unshaded",
-    srcs = glob(["**/HeronInstance.java"]),
+    srcs = glob(["**/*/*.java"]),
     main_class = "com.twitter.heron.instance.HeronInstance",
-    deps = [
-        ":instance-java",
-        "//heron/common/src/java:basics-java",
-        "//heron/common/src/java:config-java",
-        "//heron/common/src/java:utils-java",
-    ] + heron_java_proto_files(),
+    deps = instance_deps_files,
 )
 
 jarjar_binary(

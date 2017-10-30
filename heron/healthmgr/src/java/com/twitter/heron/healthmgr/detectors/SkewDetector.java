@@ -17,7 +17,6 @@ package com.twitter.heron.healthmgr.detectors;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 import javax.inject.Inject;
 
@@ -50,13 +49,14 @@ public class SkewDetector extends BaseDetector {
   public List<Symptom> detect() {
     ArrayList<Symptom> result = new ArrayList<>();
 
-    Map<String, ComponentMetrics> metrics = sensor.get();
-    for (ComponentMetrics compMetrics : metrics.values()) {
+    ComponentMetrics metrics = sensor.getMetrics();
+    for (String compName : metrics.getComponentNames()) {
+      ComponentMetrics compMetrics = metrics.filterByComponent(compName);
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       MetricsStats stats = compStats.computeStats(sensor.getMetricName());
       if (stats.getMetricMax() > skewRatio * stats.getMetricMin()) {
         LOG.info(String.format("Detected skew for %s, min = %f, max = %f",
-            compMetrics.getComponentName(), stats.getMetricMin(), stats.getMetricMax()));
+            compName, stats.getMetricMin(), stats.getMetricMax()));
         result.add(new Symptom(symptomName.text(), compMetrics));
       }
     }

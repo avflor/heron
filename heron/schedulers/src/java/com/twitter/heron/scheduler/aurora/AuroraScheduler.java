@@ -29,14 +29,15 @@ import javax.xml.bind.DatatypeConverter;
 import com.google.common.base.Optional;
 
 import com.twitter.heron.api.generated.TopologyAPI;
+import com.twitter.heron.api.utils.TopologyUtils;
 import com.twitter.heron.common.basics.FileUtils;
-import com.twitter.heron.common.utils.topology.TopologyUtils;
 import com.twitter.heron.proto.scheduler.Scheduler;
 import com.twitter.heron.scheduler.UpdateTopologyManager;
 import com.twitter.heron.scheduler.utils.Runtime;
 import com.twitter.heron.scheduler.utils.SchedulerUtils;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Context;
+import com.twitter.heron.spi.common.Key;
 import com.twitter.heron.spi.common.TokenSub;
 import com.twitter.heron.spi.packing.PackingPlan;
 import com.twitter.heron.spi.packing.Resource;
@@ -55,7 +56,11 @@ public class AuroraScheduler implements IScheduler, IScalable {
   public void initialize(Config mConfig, Config mRuntime) {
     this.config = Config.toClusterMode(mConfig);
     this.runtime = mRuntime;
-    this.controller = getController();
+    try {
+      this.controller = getController();
+    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+      LOG.severe("AuroraController initialization failed " + e.getMessage());
+    }
     this.updateTopologyManager =
         new UpdateTopologyManager(config, runtime, Optional.<IScalable>of(this));
   }
@@ -65,15 +70,28 @@ public class AuroraScheduler implements IScheduler, IScalable {
    *
    * @return AuroraController
    */
-  protected AuroraController getController() {
+  protected AuroraController getController()
+      throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+    Boolean cliController = config.getBooleanValue(Key.AURORA_CONTROLLER_CLASS);
     Config localConfig = Config.toLocalMode(this.config);
-    return new AuroraCLIController(
-        Runtime.topologyName(runtime),
-        Context.cluster(localConfig),
-        Context.role(localConfig),
-        Context.environ(localConfig),
-        AuroraContext.getHeronAuroraPath(localConfig),
-        Context.verbose(localConfig));
+    if (cliController) {
+      return new AuroraCLIController(
+          Runtime.topologyName(runtime),
+          Context.cluster(localConfig),
+          Context.role(localConfig),
+          Context.environ(localConfig),
+          AuroraContext.getHeronAuroraPath(localConfig),
+          Context.verbose(localConfig));
+    } else {
+      return new AuroraHeronShellController(
+          Runtime.topologyName(runtime),
+          Context.cluster(localConfig),
+          Context.role(localConfig),
+          Context.environ(localConfig),
+          AuroraContext.getHeronAuroraPath(localConfig),
+          Context.verbose(localConfig),
+          localConfig);
+    }
   }
 
   @Override
@@ -193,6 +211,7 @@ public class AuroraScheduler implements IScheduler, IScalable {
         TopologyUtils.makeClassPath(topology, Context.topologyBinaryFile(config)));
 
     auroraProperties.put(AuroraField.SYSTEM_YAML, Context.systemConfigFile(config));
+    auroraProperties.put(AuroraField.OVERRIDE_YAML, Context.overrideFile(config));
     auroraProperties.put(AuroraField.COMPONENT_RAMMAP, Runtime.componentRamMap(runtime));
     auroraProperties.put(AuroraField.COMPONENT_JVM_OPTS_IN_BASE64,
         formatJavaOpts(TopologyUtils.getComponentJvmOptions(topology)));
@@ -205,6 +224,8 @@ public class AuroraScheduler implements IScheduler, IScalable {
     auroraProperties.put(AuroraField.SHELL_BINARY, Context.shellBinary(config));
     auroraProperties.put(AuroraField.PYTHON_INSTANCE_BINARY,
         Context.pythonInstanceBinary(config));
+    auroraProperties.put(AuroraField.CPP_INSTANCE_BINARY,
+        Context.cppInstanceBinary(config));
 
     auroraProperties.put(AuroraField.CPUS_PER_CONTAINER,
         Double.toString(containerResource.getCpu()));
@@ -257,6 +278,11 @@ public class AuroraScheduler implements IScheduler, IScalable {
         Context.statefulStorageCustomClassPath(config));
     auroraProperties.put(AuroraField.CKPTMGR_CLASSPATH, completeCkptmgrProcessClassPath);
     auroraProperties.put(AuroraField.STATEFUL_CONFIG_YAML, Context.statefulConfigFile(config));
+
+    String healthMgrMode =
+        Context.healthMgrMode(config) == null ? "disabled" : Context.healthMgrMode(config);
+    auroraProperties.put(AuroraField.HEALTHMGR_MODE, healthMgrMode);
+    auroraProperties.put(AuroraField.HEALTHMGR_CLASSPATH, Context.healthMgrClassPath(config));
 
     return auroraProperties;
   }

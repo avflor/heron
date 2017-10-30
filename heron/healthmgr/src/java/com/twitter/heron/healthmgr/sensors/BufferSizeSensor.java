@@ -15,11 +15,8 @@
 
 package com.twitter.heron.healthmgr.sensors;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.Collection;
+
 import javax.inject.Inject;
 
 import com.microsoft.dhalion.api.MetricsProvider;
@@ -48,60 +45,46 @@ public class BufferSizeSensor extends BaseSensor {
     this.metricsProvider = metricsProvider;
   }
 
-  @Override
-  public Map<String, ComponentMetrics> fetchMetrics() {
-    this.metrics = readMetrics(topologyProvider.getBoltNames());
-    return this.metrics;
-  }
-
   /**
    * The buffer size as provided by tracker
    *
    * @return buffer size
    */
-  public Map<String, ComponentMetrics> readMetrics(String... desiredBoltNames) {
-    Map<String, ComponentMetrics> result = new HashMap<>();
-
-    Set<String> boltNameFilter = new HashSet<>();
-    if (desiredBoltNames.length > 0) {
-      boltNameFilter.addAll(Arrays.asList(desiredBoltNames));
-    }
-
+  @Override
+  public ComponentMetrics fetchMetrics() {
+    metrics = new ComponentMetrics();
     String[] boltComponents = topologyProvider.getBoltNames();
     for (String boltComponent : boltComponents) {
-      if (!boltNameFilter.isEmpty() && !boltNameFilter.contains(boltComponent)) {
-        continue;
-      }
-
       String[] boltInstanceNames = packingPlanProvider.getBoltInstanceNames(boltComponent);
-
-      Map<String, InstanceMetrics> instanceMetrics = new HashMap<>();
       for (String boltInstanceName : boltInstanceNames) {
         String metric = getMetricName() + boltInstanceName + MetricName.METRIC_BUFFER_SIZE_SUFFIX;
 
-        Map<String, ComponentMetrics> stmgrResult = metricsProvider.getComponentMetrics(
-            metric,
-            getDuration(),
-            COMPONENT_STMGR);
+        ComponentMetrics stmgrResult = metricsProvider.getComponentMetrics(
+            metric, getDuration(), COMPONENT_STMGR);
 
-        HashMap<String, InstanceMetrics> streamManagerResult =
-            stmgrResult.get(COMPONENT_STMGR).getInstanceData();
+        Collection<InstanceMetrics> streamManagerResult =
+            stmgrResult.filterByComponent(COMPONENT_STMGR).getMetrics();
+        if (streamManagerResult.isEmpty()) {
+          continue;
+        }
 
         // since a bolt instance belongs to one stream manager, expect just one metrics
         // manager instance in the result
-        double stmgrInstanceResult =
-            streamManagerResult.values().iterator().next().getMetricValueSum(metric);
+        Double stmgrInstanceResult = 0.0;
+        for (InstanceMetrics iMetrics : streamManagerResult) {
+          Double val = iMetrics.getValueSum();
+          if (val != null) {
+            stmgrInstanceResult += val;
+          }
+        }
 
         InstanceMetrics boltInstanceMetric =
-            new InstanceMetrics(boltInstanceName, getMetricName(), stmgrInstanceResult);
-
-        instanceMetrics.put(boltInstanceName, boltInstanceMetric);
+            new InstanceMetrics(boltComponent, boltInstanceName, getMetricName());
+        boltInstanceMetric.addValue(stmgrInstanceResult);
+        metrics.add(boltInstanceMetric);
       }
-
-      ComponentMetrics componentMetrics = new ComponentMetrics(boltComponent, instanceMetrics);
-      result.put(boltComponent, componentMetrics);
     }
 
-    return result;
+    return metrics;
   }
 }

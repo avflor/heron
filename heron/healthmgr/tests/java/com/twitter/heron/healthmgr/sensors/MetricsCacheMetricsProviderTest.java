@@ -17,11 +17,13 @@ package com.twitter.heron.healthmgr.sensors;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 
 import com.microsoft.dhalion.metrics.ComponentMetrics;
-import com.microsoft.dhalion.metrics.InstanceMetrics;
+
+import org.junit.Test;
+import org.mockito.Mockito;
+
 import com.twitter.heron.proto.system.Common.Status;
 import com.twitter.heron.proto.system.Common.StatusCode;
 import com.twitter.heron.proto.tmaster.TopologyMaster;
@@ -29,13 +31,14 @@ import com.twitter.heron.proto.tmaster.TopologyMaster.MetricInterval;
 import com.twitter.heron.proto.tmaster.TopologyMaster.MetricResponse.IndividualMetric;
 import com.twitter.heron.proto.tmaster.TopologyMaster.MetricResponse.IndividualMetric.IntervalValue;
 import com.twitter.heron.proto.tmaster.TopologyMaster.MetricResponse.TaskMetric;
-
-import org.junit.Test;
+import com.twitter.heron.proto.tmaster.TopologyMaster.MetricsCacheLocation;
+import com.twitter.heron.spi.statemgr.SchedulerStateManagerAdaptor;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 public class MetricsCacheMetricsProviderTest {
   @Test
@@ -79,18 +82,21 @@ public class MetricsCacheMetricsProviderTest {
     doReturn(response).when(spyMetricsProvider)
         .getMetricsFromMetricsCache(metric, comp, Instant.ofEpochSecond(10), Duration.ofSeconds(60));
 
-    Map<String, ComponentMetrics> metrics =
+    ComponentMetrics metrics =
         spyMetricsProvider.getComponentMetrics(metric, Duration.ofSeconds(60), comp);
 
-    assertEquals(1, metrics.size());
-    assertNotNull(metrics.get(comp));
-    assertEquals(2, metrics.get(comp).getInstanceData().size());
+    assertEquals(1, metrics.getComponentNames().size());
+    assertEquals(2, metrics.filterByComponent(comp).getMetrics().size());
 
-    HashMap<String, InstanceMetrics> componentMetrics = metrics.get(comp).getInstanceData();
-    assertEquals(104,
-        componentMetrics.get("container_1_bolt_1").getMetricValueSum(metric).intValue());
-    assertEquals(17,
-        componentMetrics.get("container_1_bolt_2").getMetricValueSum(metric).intValue());
+    ComponentMetrics result =
+        metrics.filterByInstance(comp, "container_1_bolt_1").filterByMetric(metric);
+    assertEquals(1, result.getMetrics().size());
+    assertEquals(104, result.getLoneInstanceMetrics().get().getValueSum().intValue());
+
+    result =
+        metrics.filterByInstance(comp, "container_1_bolt_2").filterByMetric(metric);
+    assertEquals(1, result.getMetrics().size());
+    assertEquals(17, result.getLoneInstanceMetrics().get().getValueSum().intValue());
   }
 
   @Test
@@ -142,19 +148,22 @@ public class MetricsCacheMetricsProviderTest {
     doReturn(response2).when(spyMetricsProvider)
         .getMetricsFromMetricsCache(metric, comp2, Instant.ofEpochSecond(10), Duration.ofSeconds(60));
 
-    Map<String, ComponentMetrics> metrics
+    ComponentMetrics metrics
         = spyMetricsProvider.getComponentMetrics(metric, Duration.ofSeconds(60), comp1, comp2);
 
-    assertEquals(2, metrics.size());
-    assertNotNull(metrics.get(comp1));
-    assertEquals(1, metrics.get(comp1).getInstanceData().size());
-    assertEquals(104,
-        metrics.get(comp1).getMetricValueSum("container_1_bolt-1_2", metric).intValue());
+    assertEquals(2, metrics.getComponentNames().size());
+    assertEquals(1, metrics.filterByComponent(comp1).getMetrics().size());
 
-    assertNotNull(metrics.get(comp2));
-    assertEquals(1, metrics.get(comp2).getInstanceData().size());
-    assertEquals(17,
-        metrics.get(comp2).getMetricValueSum("container_1_bolt-2_1", metric).intValue());
+    ComponentMetrics result =
+        metrics.filterByInstance(comp1, "container_1_bolt-1_2").filterByMetric(metric);
+    assertEquals(1, result.getMetrics().size());
+    assertEquals(104, result.getLoneInstanceMetrics().get().getValueSum().intValue());
+
+    assertEquals(1, metrics.filterByComponent(comp2).getMetrics().size());
+    result =
+        metrics.filterByInstance(comp2, "container_1_bolt-2_1").filterByMetric(metric);
+    assertEquals(1, result.getMetrics().size());
+    assertEquals(17, result.getLoneInstanceMetrics().get().getValueSum().intValue());
   }
 
   @Test
@@ -178,15 +187,15 @@ public class MetricsCacheMetricsProviderTest {
 
     doReturn(response).when(spyMetricsProvider)
         .getMetricsFromMetricsCache(metric, comp, Instant.ofEpochSecond(10), Duration.ofSeconds(60));
-    Map<String, ComponentMetrics> metrics
+    ComponentMetrics metrics
         = spyMetricsProvider.getComponentMetrics(metric, Duration.ofSeconds(60), comp);
 
-    assertEquals(1, metrics.size());
-    assertNotNull(metrics.get(comp));
-    assertEquals(1, metrics.get(comp).getInstanceData().size());
+    assertEquals(1, metrics.getComponentNames().size());
+    assertNotNull(metrics.filterByComponent(comp));
+    assertEquals(1, metrics.filterByComponent(comp).getMetrics().size());
 
-    HashMap<String, InstanceMetrics> componentMetrics = metrics.get(comp).getInstanceData();
-    assertEquals(601, componentMetrics.get("stmgr-1").getMetricValueSum(metric).intValue());
+    metrics = metrics.filterByInstance(comp, "stmgr-1");
+    assertEquals(601, metrics.getLoneInstanceMetrics().get().getValueSum().intValue());
   }
 
   @Test
@@ -201,17 +210,26 @@ public class MetricsCacheMetricsProviderTest {
 
     doReturn(response).when(spyMetricsProvider)
         .getMetricsFromMetricsCache(metric, comp, Instant.ofEpochSecond(10), Duration.ofSeconds(60));
-    Map<String, ComponentMetrics> metrics
+    ComponentMetrics metrics
         = spyMetricsProvider.getComponentMetrics(metric, Duration.ofSeconds(60), comp);
 
-    assertEquals(1, metrics.size());
-    assertNotNull(metrics.get(comp));
-    assertEquals(0, metrics.get(comp).getInstanceData().size());
+    assertEquals(0, metrics.getComponentNames().size());
   }
 
   private MetricsCacheMetricsProvider createMetricsProviderSpy() {
+    MetricsCacheLocation location = MetricsCacheLocation.newBuilder()
+        .setTopologyName("testTopo")
+        .setTopologyId("topoId")
+        .setHost("localhost")
+        .setControllerPort(0)
+        .setMasterPort(0)
+        .build();
+
+    SchedulerStateManagerAdaptor stateMgr = Mockito.mock(SchedulerStateManagerAdaptor.class);
+    when(stateMgr.getMetricsCacheLocation("testTopo")).thenReturn(location);
+
     MetricsCacheMetricsProvider metricsProvider
-        = new MetricsCacheMetricsProvider("localhost");
+        = new MetricsCacheMetricsProvider(stateMgr, "testTopo");
 
     MetricsCacheMetricsProvider spyMetricsProvider = spy(metricsProvider);
     spyMetricsProvider.setClock(new TestClock(70000));
@@ -259,28 +277,26 @@ public class MetricsCacheMetricsProviderTest {
     doReturn(response).when(spyMetricsProvider)
         .getMetricsFromMetricsCache(metric, comp, Instant.ofEpochSecond(10), Duration.ofSeconds(60));
 
-    Map<String, ComponentMetrics> metrics =
-        spyMetricsProvider
-            .getComponentMetrics(metric, Instant.ofEpochSecond(10), Duration.ofSeconds(60), comp);
+    ComponentMetrics metrics = spyMetricsProvider
+        .getComponentMetrics(metric, Instant.ofEpochSecond(10), Duration.ofSeconds(60), comp);
 
-    assertEquals(1, metrics.size());
-    ComponentMetrics componentMetrics = metrics.get(comp);
-    assertNotNull(componentMetrics);
-    assertEquals(2, componentMetrics.getInstanceData().size());
+    assertEquals(1, metrics.getComponentNames().size());
+    ComponentMetrics compMetrics = metrics.filterByComponent(comp);
+    assertEquals(2, compMetrics.getMetrics().size());
 
-    InstanceMetrics instanceMetrics = componentMetrics.getInstanceData("container_1_bolt_1");
+    ComponentMetrics instanceMetrics = compMetrics.filterByInstance(comp, "container_1_bolt_1");
     assertNotNull(instanceMetrics);
     assertEquals(1, instanceMetrics.getMetrics().size());
 
-    Map<Instant, Double> metricValues = instanceMetrics.getMetrics().get(metric);
+    Map<Instant, Double> metricValues = instanceMetrics.getLoneInstanceMetrics().get().getValues();
     assertEquals(1, metricValues.size());
     assertEquals(104, metricValues.get(Instant.ofEpochSecond(1497481288)).intValue());
 
-    instanceMetrics = componentMetrics.getInstanceData("container_1_bolt_2");
+    instanceMetrics = compMetrics.filterByInstance(comp, "container_1_bolt_2");
     assertNotNull(instanceMetrics);
     assertEquals(1, instanceMetrics.getMetrics().size());
 
-    metricValues = instanceMetrics.getMetrics().get(metric);
+    metricValues = instanceMetrics.getLoneInstanceMetrics().get().getValues();
     assertEquals(3, metricValues.size());
     assertEquals(12, metricValues.get(Instant.ofEpochSecond(1497481228L)).intValue());
     assertEquals(2, metricValues.get(Instant.ofEpochSecond(1497481348L)).intValue());

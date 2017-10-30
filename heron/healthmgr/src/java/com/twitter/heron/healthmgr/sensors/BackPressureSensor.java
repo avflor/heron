@@ -16,8 +16,8 @@
 package com.twitter.heron.healthmgr.sensors;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collection;
+
 import javax.inject.Inject;
 
 import com.microsoft.dhalion.api.MetricsProvider;
@@ -34,24 +34,15 @@ public class BackPressureSensor extends BaseSensor {
   private final MetricsProvider metricsProvider;
   private final PackingPlanProvider packingPlanProvider;
 
-
   @Inject
   public BackPressureSensor(PackingPlanProvider packingPlanProvider,
                             TopologyProvider topologyProvider,
                             HealthPolicyConfig policyConfig,
                             MetricsProvider metricsProvider) {
     super(topologyProvider, policyConfig, METRIC_BACK_PRESSURE.text(),
-        BackPressureSensor.class
-            .getSimpleName());
+        BackPressureSensor.class.getSimpleName());
     this.packingPlanProvider = packingPlanProvider;
     this.metricsProvider = metricsProvider;
-  }
-
-  @Override
-  public Map<String, ComponentMetrics> fetchMetrics() {
-
-    this.metrics = readMetrics();
-    return this.metrics;
   }
 
   /**
@@ -59,44 +50,53 @@ public class BackPressureSensor extends BaseSensor {
    *
    * @return the average value
    */
-  private Map<String, ComponentMetrics> readMetrics() {
-    Map<String, ComponentMetrics> result = new HashMap<>();
-
+  @Override
+  public ComponentMetrics fetchMetrics() {
+    metrics = new ComponentMetrics();
     String[] boltComponents = topologyProvider.getBoltNames();
     for (String boltComponent : boltComponents) {
       String[] boltInstanceNames = packingPlanProvider.getBoltInstanceNames(boltComponent);
 
       Duration duration = getDuration();
-      Map<String, InstanceMetrics> instanceMetrics = new HashMap<>();
       for (String boltInstanceName : boltInstanceNames) {
-        double averageBp = getAverageBp(duration, boltInstanceName);
+        Double averageBp = getAverageBp(duration, boltInstanceName);
+        if (averageBp == null) {
+          continue;
+        }
+
         InstanceMetrics boltInstanceMetric
-            = new InstanceMetrics(boltInstanceName, getMetricName(), averageBp);
-
-        instanceMetrics.put(boltInstanceName, boltInstanceMetric);
-
+            = new InstanceMetrics(boltComponent, boltInstanceName, getMetricName());
+        boltInstanceMetric.addValue(averageBp);
+        metrics.add(boltInstanceMetric);
       }
-      ComponentMetrics componentMetrics = new ComponentMetrics(boltComponent, instanceMetrics);
-      result.put(boltComponent, componentMetrics);
     }
 
-    return result;
+    return metrics;
   }
 
 
-  private double getAverageBp(Duration duration, String boltInstanceName) {
+  private Double getAverageBp(Duration duration, String boltInstanceName) {
     String metric = getMetricName() + boltInstanceName;
-    Map<String, ComponentMetrics> stmgrResult = metricsProvider.getComponentMetrics(
+    ComponentMetrics stmgrResult = metricsProvider.getComponentMetrics(
         metric, duration, COMPONENT_STMGR);
 
-    HashMap<String, InstanceMetrics> streamManagerResult =
-        stmgrResult.get(COMPONENT_STMGR).getInstanceData();
+    Collection<InstanceMetrics> streamManagerResult =
+        stmgrResult.filterByComponent(COMPONENT_STMGR).getMetrics();
+    if (streamManagerResult.isEmpty()) {
+      return null;
+    }
 
-    // since a bolt instance belongs to one stream manager, expect just one metrics
-    // manager instance in the result
-    InstanceMetrics stmgrInstanceResult = streamManagerResult.values().iterator().next();
-
-    double averageBp = stmgrInstanceResult.getMetricValueSum(metric) / duration.getSeconds();
+    // since a bolt instance belongs to one stream manager,
+    // for tracker rest api: expect just one metrics manager instance in the result;
+    // for tmaster/metricscache stat interface: expect a list
+    Double valueSum = 0.0;
+    for (InstanceMetrics stmgrInstanceResult : streamManagerResult) {
+      Double val = stmgrInstanceResult.getValueSum();
+      if (val != null) {
+        valueSum += val;
+      }
+    }
+    double averageBp = valueSum / duration.getSeconds();
 
     // The maximum value of averageBp should be 1000, i.e. 1000 millis of BP per second. Due to
     // a bug in Heron (Issue: 1753), this value could be higher in some cases. The following

@@ -14,13 +14,12 @@
 
 package com.twitter.heron.healthmgr.detectors;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
-import com.microsoft.dhalion.metrics.InstanceMetrics;
 
 import org.junit.Test;
 
@@ -30,8 +29,7 @@ import com.twitter.heron.healthmgr.sensors.ExecuteCountSensor;
 import static com.twitter.heron.healthmgr.detectors.ProcessingRateSkewDetector.CONF_SKEW_RATIO;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_EXE_COUNT;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -41,15 +39,12 @@ public class ProcessingRateSkewDetectorTest {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_SKEW_RATIO, 1.5)).thenReturn(2.5);
 
-    ComponentMetrics compMetrics = new ComponentMetrics("bolt");
-    compMetrics.addInstanceMetric(new InstanceMetrics("i1", METRIC_EXE_COUNT.text(), 1000));
-    compMetrics.addInstanceMetric(new InstanceMetrics("i2", METRIC_EXE_COUNT.text(), 200));
-
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt", compMetrics);
+    ComponentMetrics topologyMetrics = new ComponentMetrics();
+    topologyMetrics.addMetric("bolt", "i1", METRIC_EXE_COUNT.text(), 1000);
+    topologyMetrics.addMetric("bolt", "i2", METRIC_EXE_COUNT.text(), 200);
 
     ExecuteCountSensor sensor = mock(ExecuteCountSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(topologyMetrics);
     when(sensor.getMetricName()).thenReturn(METRIC_EXE_COUNT.text());
 
     ProcessingRateSkewDetector detector = new ProcessingRateSkewDetector(sensor, config);
@@ -57,13 +52,13 @@ public class ProcessingRateSkewDetectorTest {
 
     assertEquals(1, symptoms.size());
 
-    compMetrics = new ComponentMetrics("bolt");
-    compMetrics.addInstanceMetric(new InstanceMetrics("i1", METRIC_EXE_COUNT.text(), 1000));
-    compMetrics.addInstanceMetric(new InstanceMetrics("i2", METRIC_EXE_COUNT.text(), 500));
-    topologyMetrics.put("bolt", compMetrics);
+    topologyMetrics = new ComponentMetrics();
+    topologyMetrics.addMetric("bolt", "i1", METRIC_EXE_COUNT.text(), 1000);
+    topologyMetrics.addMetric("bolt", "i2", METRIC_EXE_COUNT.text(), 500);
 
     sensor = mock(ExecuteCountSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(topologyMetrics);
+    when(sensor.getMetricName()).thenReturn(METRIC_EXE_COUNT.text());
 
     detector = new ProcessingRateSkewDetector(sensor, config);
     symptoms = detector.detect();
@@ -76,43 +71,28 @@ public class ProcessingRateSkewDetectorTest {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_SKEW_RATIO, 1.5)).thenReturn(2.5);
 
-    ComponentMetrics compMetrics1 = new ComponentMetrics("bolt-1");
-    compMetrics1.addInstanceMetric(new InstanceMetrics("i1", METRIC_EXE_COUNT.text(), 1000));
-    compMetrics1.addInstanceMetric(new InstanceMetrics("i2", METRIC_EXE_COUNT.text(), 200));
-
-    ComponentMetrics compMetrics2 = new ComponentMetrics("bolt-2");
-    compMetrics2.addInstanceMetric(new InstanceMetrics("i1", METRIC_EXE_COUNT.text(), 1000));
-    compMetrics2.addInstanceMetric(new InstanceMetrics("i2", METRIC_EXE_COUNT.text(), 200));
-
-    ComponentMetrics compMetrics3 = new ComponentMetrics("bolt-3");
-    compMetrics3.addInstanceMetric(new InstanceMetrics("i1", METRIC_EXE_COUNT.text(), 1000));
-    compMetrics3.addInstanceMetric(new InstanceMetrics("i2", METRIC_EXE_COUNT.text(), 500));
-
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt-1", compMetrics1);
-    topologyMetrics.put("bolt-2", compMetrics2);
-    topologyMetrics.put("bolt-3", compMetrics3);
+    ComponentMetrics topologyMetrics = new ComponentMetrics();
+    topologyMetrics.addMetric("bolt-1", "i1", METRIC_EXE_COUNT.text(), 1000);
+    topologyMetrics.addMetric("bolt-1", "i2", METRIC_EXE_COUNT.text(), 200);
+    topologyMetrics.addMetric("bolt-2", "i1", METRIC_EXE_COUNT.text(), 1000);
+    topologyMetrics.addMetric("bolt-2", "i2", METRIC_EXE_COUNT.text(), 200);
+    topologyMetrics.addMetric("bolt-3", "i1", METRIC_EXE_COUNT.text(), 1000);
+    topologyMetrics.addMetric("bolt-3", "i2", METRIC_EXE_COUNT.text(), 500);
 
     ExecuteCountSensor sensor = mock(ExecuteCountSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(topologyMetrics);
     when(sensor.getMetricName()).thenReturn(METRIC_EXE_COUNT.text());
 
     ProcessingRateSkewDetector detector = new ProcessingRateSkewDetector(sensor, config);
     List<Symptom> symptoms = detector.detect();
 
     assertEquals(2, symptoms.size());
-    for (Symptom symptom : symptoms) {
-      if (symptom.getComponent().getComponentName().equals("bolt-1")) {
-        compMetrics1 = null;
-      } else if (symptom.getComponent().getComponentName().equals("bolt-2")) {
-        compMetrics2 = null;
-      } else if (symptom.getComponent().getComponentName().equals("bolt-3")) {
-        compMetrics3 = null;
-      }
-    }
+    Set<String> comps = symptoms.stream().
+        flatMap(symptom -> symptom.getComponentMetrics().getComponentNames().stream())
+        .collect(Collectors.toSet());
 
-    assertNull(compMetrics1);
-    assertNull(compMetrics2);
-    assertNotNull(compMetrics3);
+    assertEquals(2, comps.size());
+    assertTrue(comps.contains("bolt-1"));
+    assertTrue(comps.contains("bolt-2"));
   }
 }

@@ -40,27 +40,19 @@ public abstract class BaseDiagnoser implements IDiagnoser {
     return getFilteredSymptoms(symptoms, SYMPTOM_BACK_PRESSURE);
   }
 
-  Map<String, ComponentMetrics> getProcessingRateSkewComponents(List<Symptom> symptoms) {
-    return getFilteredComponents(symptoms, SYMPTOM_PROCESSING_RATE_SKEW);
-  }
-
-  Map<String, ComponentMetrics> getWaitQDisparityComponents(List<Symptom> symptoms) {
-    return getFilteredComponents(symptoms, SYMPTOM_WAIT_Q_DISPARITY);
-  }
-
-  protected Map<String, ComponentMetrics> getLargeWaitQComponents(List<Symptom> symptoms) {
+  protected ComponentMetrics getLargeWaitQComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_LARGE_WAIT_Q);
   }
 
-  protected Map<String, ComponentMetrics> getSmallWaitQComponents(List<Symptom> symptoms) {
+  protected ComponentMetrics getSmallWaitQComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_SMALL_WAIT_Q);
   }
 
-  protected Map<String, ComponentMetrics> getHighConfUnsaturatedComponents(List<Symptom> symptoms) {
+  protected ComponentMetrics getHighConfUnsaturatedComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_UNSATURATEDCOMP_HIGHCONF);
   }
 
-  protected Map<String, ComponentMetrics> getLowConfUnsaturatedComponents(List<Symptom> symptoms) {
+  protected ComponentMetrics getLowConfUnsaturatedComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_UNSATURATEDCOMP_LOWCONF);
   }
 
@@ -72,8 +64,16 @@ public abstract class BaseDiagnoser implements IDiagnoser {
     return getFilteredStats(symptoms, SYMPTOM_UNSATURATEDCOMP_LOWCONF);
   }
 
-  protected Map<String, ComponentMetrics> getGrowingWaitQueueComponents(List<Symptom> symptoms) {
+  protected ComponentMetrics getGrowingWaitQueueComponents(List<Symptom> symptoms) {
     return getFilteredComponents(symptoms, SYMPTOM_GROWING_WAIT_Q);
+  }
+
+  ComponentMetrics getProcessingRateSkewComponents(List<Symptom> symptoms) {
+    return getFilteredComponents(symptoms, SYMPTOM_PROCESSING_RATE_SKEW);
+  }
+
+  ComponentMetrics getWaitQDisparityComponents(List<Symptom> symptoms) {
+    return getFilteredComponents(symptoms, SYMPTOM_WAIT_Q_DISPARITY);
   }
 
   private List<Symptom> getFilteredSymptoms(List<Symptom> symptoms, SymptomName type) {
@@ -96,12 +96,11 @@ public abstract class BaseDiagnoser implements IDiagnoser {
     return result;
   }
 
-  private Map<String, ComponentMetrics> getFilteredComponents(List<Symptom> symptoms,
-                                                              SymptomName type) {
-    Map<String, ComponentMetrics> result = new HashMap<>();
+  private ComponentMetrics getFilteredComponents(List<Symptom> symptoms, SymptomName type) {
+    ComponentMetrics result = new ComponentMetrics();
     for (Symptom symptom : symptoms) {
       if (symptom.getSymptomName().equals(type.text())) {
-        result.putAll(symptom.getComponents());
+        result = ComponentMetrics.merge(result, symptom.getComponentMetrics());
       }
     }
     return result;

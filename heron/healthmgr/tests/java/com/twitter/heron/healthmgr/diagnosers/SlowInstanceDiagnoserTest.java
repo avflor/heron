@@ -43,10 +43,10 @@ public class SlowInstanceDiagnoserTest {
 
     Diagnosis result = new SlowInstanceDiagnoser().diagnose(symptoms);
     assertEquals(1, result.getSymptoms().size());
-    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponent();
+    ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponentMetrics();
     assertEquals(123,
-        data.getMetricValueSum("container_1_bolt_0",METRIC_BACK_PRESSURE.text())
-            .intValue());
+        data.getMetrics("bolt","container_1_bolt_0",METRIC_BACK_PRESSURE.text())
+            .get().getValueSum().intValue());
   }
 
   @Test

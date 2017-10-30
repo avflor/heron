@@ -16,7 +16,6 @@
 package com.twitter.heron.healthmgr.diagnosers;
 
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import com.microsoft.dhalion.detector.Symptom;
@@ -29,7 +28,6 @@ import com.twitter.heron.healthmgr.common.ComponentMetricsHelper;
 
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.DIAGNOSIS_DATA_SKEW;
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_DATA_SKEW;
-import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BACK_PRESSURE;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_EXE_COUNT;
 
@@ -39,24 +37,29 @@ public class DataSkewDiagnoser extends BaseDiagnoser {
   @Override
   public Diagnosis diagnose(List<Symptom> symptoms) {
     List<Symptom> bpSymptoms = getBackPressureSymptoms(symptoms);
-    Map<String, ComponentMetrics> processingRateSkewComponents =
-        getProcessingRateSkewComponents(symptoms);
-    Map<String, ComponentMetrics> waitQDisparityComponents = getWaitQDisparityComponents(symptoms);
+    ComponentMetrics processingRateSkewMetrics = getProcessingRateSkewComponents(symptoms);
+    ComponentMetrics waitQDisparityMetrics = getWaitQDisparityComponents(symptoms);
 
-    if (bpSymptoms.isEmpty() || processingRateSkewComponents.isEmpty()
-        || waitQDisparityComponents.isEmpty()) {
+    if (bpSymptoms.isEmpty() || processingRateSkewMetrics.getMetrics().isEmpty()
+        || waitQDisparityMetrics.getMetrics().isEmpty()) {
       // Since there is no back pressure or disparate execute count, no action is needed
       return null;
     } else if (bpSymptoms.size() > 1) {
       // TODO handle cases where multiple detectors create back pressure symptom
       throw new IllegalStateException("Multiple back-pressure symptoms case");
     }
-    ComponentMetrics bpMetrics = bpSymptoms.iterator().next().getComponent();
+
+    ComponentMetrics bpMetrics = bpSymptoms.iterator().next().getComponentMetrics();
+    if (bpMetrics.getComponentNames().size() != 1) {
+      // TODO handle cases where multiple detectors create back pressure symptom
+      throw new IllegalStateException("Multiple back-pressure symptoms case");
+    }
+    String compCausingBp = bpMetrics.getComponentNames().iterator().next();
 
     // verify data skew, larger queue size and back pressure for the same component exists
-    ComponentMetrics exeCountMetrics = processingRateSkewComponents.get(bpMetrics.getComponentName());
-    ComponentMetrics pendingBufferMetrics = waitQDisparityComponents.get(bpMetrics.getComponentName());
-    if (exeCountMetrics == null || pendingBufferMetrics == null) {
+    ComponentMetrics exeCountMetrics = processingRateSkewMetrics.filterByComponent(compCausingBp);
+    ComponentMetrics pendingBufferMetrics = waitQDisparityMetrics.filterByComponent(compCausingBp);
+    if (exeCountMetrics.getMetrics().isEmpty() || pendingBufferMetrics.getMetrics().isEmpty()) {
       // no processing rate skew and buffer size skew
       // for the component with back pressure. This is not a data skew case
       return null;
@@ -71,13 +74,27 @@ public class DataSkewDiagnoser extends BaseDiagnoser {
 
     Symptom resultSymptom = null;
     for (InstanceMetrics boltMetrics : compStats.getBoltsWithBackpressure()) {
-      double exeCount = boltMetrics.getMetricValueSum(METRIC_EXE_COUNT.text());
-      double bufferSize = boltMetrics.getMetricValueSum(METRIC_BUFFER_SIZE.text());
-      double bpValue = boltMetrics.getMetricValueSum(METRIC_BACK_PRESSURE.text());
+      String compName = boltMetrics.getComponentName();
+      String instName = boltMetrics.getInstanceName();
+
+      if (exeCountMetrics.filterByInstance(compName, instName).getMetrics().isEmpty()) {
+        continue;
+      }
+      double exeCount = exeCountMetrics.filterByInstance(compName, instName)
+          .getMetrics().iterator().next().getValueSum();
+
+      if (pendingBufferMetrics.filterByInstance(compName, instName).getMetrics().isEmpty()) {
+        continue;
+      }
+      double bufferSize = pendingBufferMetrics.filterByInstance(compName, instName)
+          .getMetrics().iterator().next().getValueSum();
+
+      double bpValue = boltMetrics.getValueSum();
+
       if (exeStats.getMetricMax() < 1.10 * exeCount
           && bufferStats.getMetricMax() < 2 * bufferSize) {
         LOG.info(String.format("DataSkew: %s back-pressure(%s), high execution count: %s and "
-            + "high buffer size %s", boltMetrics.getName(), bpValue, exeCount, bufferSize));
+            + "high buffer size %s", instName, bpValue, exeCount, bufferSize));
         resultSymptom = new Symptom(SYMPTOM_DATA_SKEW.text(), mergedData);
       }
     }

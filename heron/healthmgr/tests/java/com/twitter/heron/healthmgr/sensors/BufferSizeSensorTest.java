@@ -14,8 +14,7 @@
 
 package com.twitter.heron.healthmgr.sensors;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
 
 import com.microsoft.dhalion.api.MetricsProvider;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
@@ -28,25 +27,12 @@ import com.twitter.heron.healthmgr.common.TopologyProvider;
 import com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName;
 
 import static com.twitter.heron.healthmgr.sensors.BaseSensor.DEFAULT_METRIC_DURATION;
+import static com.twitter.heron.healthmgr.sensors.BaseSensor.MetricName.METRIC_BUFFER_SIZE;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class BufferSizeSensorTest {
-  static void registerStMgrInstanceMetricResponse(MetricsProvider metricsProvider,
-                                                  String metric,
-                                                  long value) {
-    Map<String, ComponentMetrics> result = new HashMap<>();
-    ComponentMetrics metrics = new ComponentMetrics("__stmgr__");
-    InstanceMetrics instanceMetrics = new InstanceMetrics("stmgr-1");
-    instanceMetrics.addMetric(metric, value);
-    metrics.addInstanceMetric(instanceMetrics);
-    result.put("__stmgr__", metrics);
-
-    when(metricsProvider.getComponentMetrics(metric, DEFAULT_METRIC_DURATION, "__stmgr__"))
-        .thenReturn(result);
-  }
-
   @Test
   public void providesBufferSizeMetricForBolts() {
 
@@ -66,25 +52,39 @@ public class BufferSizeSensorTest {
     MetricsProvider metricsProvider = mock(MetricsProvider.class);
 
     for (String boltId : boltIds) {
-      String metric = MetricName.METRIC_BUFFER_SIZE
+      String metric = METRIC_BUFFER_SIZE
           + boltId + MetricName.METRIC_BUFFER_SIZE_SUFFIX;
       registerStMgrInstanceMetricResponse(metricsProvider, metric, boltId.length());
     }
 
     BufferSizeSensor bufferSizeSensor =
         new BufferSizeSensor(null, packingPlanProvider, topologyProvider, metricsProvider);
+    bufferSizeSensor.fetchMetrics();
 
-    Map<String, ComponentMetrics> componentMetrics = bufferSizeSensor.fetchMetrics();
-    assertEquals(2, componentMetrics.size());
+    ComponentMetrics componentMetrics = bufferSizeSensor.getMetrics();
+    assertEquals(2, componentMetrics.getComponentNames().size());
 
-    assertEquals(1, componentMetrics.get("bolt-1").getInstanceData().size());
-    assertEquals(boltIds[0].length(), componentMetrics.get("bolt-1").getInstanceData(boltIds[0])
-        .getMetricValueSum(MetricName.METRIC_BUFFER_SIZE.text()).intValue());
+    assertEquals(1, componentMetrics.filterByComponent("bolt-1").getMetrics().size());
+    Optional<InstanceMetrics> result
+        = componentMetrics.getMetrics("bolt-1", boltIds[0], METRIC_BUFFER_SIZE.text());
+    assertEquals(boltIds[0].length(), result.get().getValueSum().intValue());
 
-    assertEquals(2, componentMetrics.get("bolt-2").getInstanceData().size());
-    assertEquals(boltIds[1].length(), componentMetrics.get("bolt-2").getInstanceData(boltIds[1])
-        .getMetricValueSum(MetricName.METRIC_BUFFER_SIZE.text()).intValue());
-    assertEquals(boltIds[2].length(), componentMetrics.get("bolt-2").getInstanceData(boltIds[2])
-        .getMetricValueSum(MetricName.METRIC_BUFFER_SIZE.text()).intValue());
+    assertEquals(2, componentMetrics.filterByComponent("bolt-2").getMetrics().size());
+    result
+        = componentMetrics.getMetrics("bolt-2", boltIds[1], METRIC_BUFFER_SIZE.text());
+    assertEquals(boltIds[1].length(), result.get().getValueSum().intValue());
+    result
+        = componentMetrics.getMetrics("bolt-2", boltIds[2], METRIC_BUFFER_SIZE.text());
+    assertEquals(boltIds[2].length(), result.get().getValueSum().intValue());
+  }
+
+  static void registerStMgrInstanceMetricResponse(MetricsProvider metricsProvider,
+                                                  String metric,
+                                                  long value) {
+    ComponentMetrics metrics = new ComponentMetrics();
+    metrics.addMetric("__stmgr__", "stmgr-1", metric, value);
+
+    when(metricsProvider.getComponentMetrics(metric, DEFAULT_METRIC_DURATION, "__stmgr__"))
+        .thenReturn(metrics);
   }
 }

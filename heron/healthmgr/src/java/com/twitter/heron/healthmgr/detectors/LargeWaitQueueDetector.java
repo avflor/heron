@@ -17,7 +17,6 @@ package com.twitter.heron.healthmgr.detectors;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 import javax.inject.Inject;
 
@@ -57,13 +56,14 @@ public class LargeWaitQueueDetector extends BaseDetector {
   public List<Symptom> detect() {
     ArrayList<Symptom> result = new ArrayList<>();
 
-    Map<String, ComponentMetrics> bufferSizes = pendingBufferSensor.get();
-    for (ComponentMetrics compMetrics : bufferSizes.values()) {
+    ComponentMetrics bufferSizes = pendingBufferSensor.getMetrics();
+    for (String compName : bufferSizes.getComponentNames()) {
+      ComponentMetrics compMetrics = bufferSizes.filterByComponent(compName);
       ComponentMetricsHelper compStats = new ComponentMetricsHelper(compMetrics);
       MetricsStats stats = compStats.computeStats(METRIC_BUFFER_SIZE.text());
       if (stats.getMetricMin() > sizeLimit) {
         LOG.info(String.format("Detected large wait queues for %s, smallest queue is %f",
-            compMetrics.getComponentName(), stats.getMetricMin()));
+            compName, stats.getMetricMin()));
         result.add(new Symptom(SYMPTOM_LARGE_WAIT_Q.text(), compMetrics));
       }
     }

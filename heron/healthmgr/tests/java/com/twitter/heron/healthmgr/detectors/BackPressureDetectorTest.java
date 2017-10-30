@@ -14,9 +14,7 @@
 
 package com.twitter.heron.healthmgr.detectors;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.metrics.ComponentMetrics;
@@ -38,24 +36,22 @@ public class BackPressureDetectorTest {
     HealthPolicyConfig config = mock(HealthPolicyConfig.class);
     when(config.getConfig(CONF_NOISE_FILTER, 20)).thenReturn(50);
 
-    ComponentMetrics compMetrics =
-        new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 55);
-    Map<String, ComponentMetrics> topologyMetrics = new HashMap<>();
-    topologyMetrics.put("bolt", compMetrics);
+    ComponentMetrics compMetrics = new ComponentMetrics();
+    compMetrics.addMetric("bolt", "i1", METRIC_BACK_PRESSURE.text(), 55);
 
     BackPressureSensor sensor = mock(BackPressureSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(compMetrics);
 
     BackPressureDetector detector = new BackPressureDetector(sensor, config);
     List<Symptom> symptoms = detector.detect();
 
     Assert.assertEquals(1, symptoms.size());
 
-    compMetrics = new ComponentMetrics("bolt", "i1", METRIC_BACK_PRESSURE.text(), 45);
-    topologyMetrics.put("bolt", compMetrics);
+    compMetrics = new ComponentMetrics();
+    compMetrics.addMetric("bolt", "i1", METRIC_BACK_PRESSURE.text(), 49);
 
     sensor = mock(BackPressureSensor.class);
-    when(sensor.get()).thenReturn(topologyMetrics);
+    when(sensor.getMetrics()).thenReturn(compMetrics);
 
     detector = new BackPressureDetector(sensor, config);
     symptoms = detector.detect();
