@@ -39,7 +39,6 @@ import com.twitter.heron.proto.scheduler.Scheduler.UpdateTopologyRequest;
 import com.twitter.heron.scheduler.client.ISchedulerClient;
 import com.twitter.heron.spi.common.Config;
 import com.twitter.heron.spi.common.Key;
-import com.twitter.heron.spi.packing.IRepacking;
 import com.twitter.heron.spi.packing.PackingPlan;
 
 import static com.twitter.heron.healthmgr.diagnosers.BaseDiagnoser.DiagnosisName.SYMPTOM_OVER_PROVISIONING_SMALLWAITQ;
@@ -168,35 +167,6 @@ public class ScaleDownResolverTest {
 
     List<Action> result = spyResolver.resolve(diagnosis);
     assertNull(result);
-  }
-
-  @Test
-  public void testBuildPackingPlan() {
-    TopologyAPI.Topology topology = createTestTopology();
-    TopologyProvider topologyProvider = createTopologyProvider(topology);
-    Config config = createConfig(topology);
-    PackingPlan currentPlan = createPacking(topology, config);
-
-    HealthPolicyConfig healthconfig = mock(HealthPolicyConfig.class);
-    when(healthconfig.getConfig(CONF_SCALE_DOWN, 5)).thenReturn(50);
-
-    Map<String, Integer> changeRequest = new HashMap<>();
-    changeRequest.put("bolt-1", 1);
-
-    Map<String, Integer> deltaChange = new HashMap<>();
-    deltaChange.put("bolt-1", -1);
-
-    IRepacking repacking = mock(IRepacking.class);
-    when(repacking.repack(currentPlan, deltaChange)).thenReturn(currentPlan);
-
-    ScaleDownResolver resolver =
-        new ScaleDownResolver(topologyProvider, null, null, eventManager, config,
-            healthconfig);
-    ScaleDownResolver spyResolver = spy(resolver);
-    doReturn(repacking).when(spyResolver).getRepackingClass("Repacking");
-
-    PackingPlan newPlan = spyResolver.buildNewPackingPlan(changeRequest, currentPlan);
-    assertEquals(currentPlan, newPlan);
   }
 
   @Test

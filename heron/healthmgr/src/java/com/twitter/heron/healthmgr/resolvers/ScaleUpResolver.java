@@ -148,10 +148,19 @@ public class ScaleUpResolver implements IResolver {
     return parallelism;
   }
 
-
   @VisibleForTesting
   PackingPlan buildNewPackingPlan(Map<String, Integer> changeRequests,
                                   PackingPlan currentPackingPlan) {
+    // Create an instance of the packing class
+    IRepacking algo = getRepackingClass(Context.repackingClass(config));
+    return buildNewPackingPlan(changeRequests, currentPackingPlan, topologyProvider, config, algo);
+  }
+
+  static PackingPlan buildNewPackingPlan(Map<String, Integer> changeRequests,
+                                         PackingPlan currentPackingPlan,
+                                         TopologyProvider topologyProvider,
+                                         Config config,
+                                         IRepacking packing) {
     Map<String, Integer> componentDeltas = new HashMap<>();
     Map<String, Integer> componentCounts = currentPackingPlan.getComponentCounts();
     for (String compName : changeRequests.keySet()) {
@@ -171,9 +180,6 @@ public class ScaleUpResolver implements IResolver {
 
       componentDeltas.put(compName, delta);
     }
-
-    // Create an instance of the packing class
-    IRepacking packing = getRepackingClass(Context.repackingClass(config));
 
     Topology topology = topologyProvider.get();
     try {

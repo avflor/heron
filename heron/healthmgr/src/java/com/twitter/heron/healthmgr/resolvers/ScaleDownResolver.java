@@ -14,15 +14,16 @@
 package com.twitter.heron.healthmgr.resolvers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+
 import javax.inject.Inject;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.microsoft.dhalion.api.IResolver;
+import com.microsoft.dhalion.common.InstanceInfo;
 import com.microsoft.dhalion.detector.Symptom;
 import com.microsoft.dhalion.diagnoser.Diagnosis;
 import com.microsoft.dhalion.events.EventManager;
@@ -30,8 +31,6 @@ import com.microsoft.dhalion.metrics.ComponentMetrics;
 import com.microsoft.dhalion.metrics.InstanceMetrics;
 import com.microsoft.dhalion.resolver.Action;
 
-import com.twitter.heron.api.generated.TopologyAPI.Topology;
-import com.twitter.heron.common.basics.SysUtils;
 import com.twitter.heron.healthmgr.HealthPolicyConfig;
 import com.twitter.heron.healthmgr.common.HealthManagerEvents.TopologyUpdate;
 import com.twitter.heron.healthmgr.common.PackingPlanProvider;
@@ -80,27 +79,27 @@ public class ScaleDownResolver implements IResolver {
   @Override
   public List<Action> resolve(List<Diagnosis> diagnosis) {
     for (Diagnosis diagnoses : diagnosis) {
-
       Symptom ovUnsatCompSymptom = diagnoses.getSymptoms().get
           (SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text());
       Symptom ovSmallWaitQSymptom = diagnoses.getSymptoms().get(
           SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text());
-      Symptom overprovisioningSymptom = ovUnsatCompSymptom != null ? ovUnsatCompSymptom :
-          ovSmallWaitQSymptom;
+      Symptom overprovisioningSymptom
+          = ovUnsatCompSymptom != null ? ovUnsatCompSymptom : ovSmallWaitQSymptom;
 
-      if (overprovisioningSymptom == null || overprovisioningSymptom.getComponents().isEmpty()) {
+      ComponentMetrics componentMetrics = overprovisioningSymptom.getComponentMetrics();
+      if (overprovisioningSymptom == null || componentMetrics.getMetrics().isEmpty()) {
         continue;
       }
 
-      if (overprovisioningSymptom.getComponents().size() > 1) {
+      if (componentMetrics.getComponentNames().size() > 1) {
         throw new UnsupportedOperationException("Multiple components are overprovisioned. This "
             + "resolver expects as input one component");
       }
 
-      ComponentMetrics ovComponent = overprovisioningSymptom.getComponent();
-      int newParallelism = computeScaleDownFactor(ovComponent, overprovisioningSymptom);
+      String ovComponent = componentMetrics.getComponentNames().iterator().next();
+      int newParallelism = computeScaleDownFactor(componentMetrics, overprovisioningSymptom);
       Map<String, Integer> changeRequest = new HashMap<>();
-      changeRequest.put(ovComponent.getComponentName(), newParallelism);
+      changeRequest.put(ovComponent, newParallelism);
 
       PackingPlan currentPackingPlan = packingPlanProvider.get();
       PackingPlan newPlan = buildNewPackingPlan(changeRequest, currentPackingPlan);
@@ -135,63 +134,11 @@ public class ScaleDownResolver implements IResolver {
   }
 
   @VisibleForTesting
-  int computeScaleDownFactor(ComponentMetrics componentMetrics, Symptom symptom) {
-    String componentName = componentMetrics.getComponentName();
-    int parallelism = 0;
-    int currentNoInstances = componentMetrics.getInstanceData().size();
-    if (symptom.getSymptomName().equals(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text())) {
-      parallelism = (int) Math.ceil(currentNoInstances * (100 -
-          scaleDownConf) / 100.0);
-    } else if (symptom.getSymptomName().equals(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text())) {
-      int currentTotalProcessingRate = 0;
-      double maxProcessingRateObserved = symptom.getStats().get(componentName).getMetricAvg();
-      for (InstanceMetrics instanceMetrics : componentMetrics.getInstanceData().values()) {
-        Double metricValue = instanceMetrics.getMetricValueSum(METRIC_EXE_COUNT.text());
-        currentTotalProcessingRate += metricValue;
-      }
-      System.out.println(maxProcessingRateObserved + " " + currentTotalProcessingRate);
-      parallelism = (int) Math.ceil(currentTotalProcessingRate/ maxProcessingRateObserved);
-    }
-
-    LOG.info(String.format("Component's, %s new parallelism is: %d",
-        componentName, parallelism));
-    return parallelism;
-  }
-
-
-  @VisibleForTesting
-  PackingPlan buildNewPackingPlan(Map<String, Integer> changeRequests,
-                                  PackingPlan currentPackingPlan) {
-    Map<String, Integer> componentDeltas = new HashMap<>();
-    Map<String, Integer> componentCounts = currentPackingPlan.getComponentCounts();
-    for (String compName : changeRequests.keySet()) {
-      if (!componentCounts.containsKey(compName)) {
-        throw new IllegalArgumentException(String.format(
-            "Invalid component name in scale up diagnosis: %s. Valid components include: %s",
-            compName, Arrays.toString(
-                componentCounts.keySet().toArray(new String[componentCounts.keySet().size()]))));
-      }
-
-      Integer newValue = changeRequests.get(compName);
-      int delta = newValue - componentCounts.get(compName);
-      if (delta == 0) {
-        LOG.info(String.format("New parallelism for %s is unchanged: %d", compName, newValue));
-        continue;
-      }
-
-      componentDeltas.put(compName, delta);
-    }
+  PackingPlan buildNewPackingPlan(Map<String, Integer> changeRequest, PackingPlan currentPackingPlan) {
     // Create an instance of the packing class
-    IRepacking packing = getRepackingClass(Context.repackingClass(config));
-
-    Topology topology = topologyProvider.get();
-    try {
-      packing.initialize(config, topology);
-      PackingPlan packedPlan = packing.repack(currentPackingPlan, componentDeltas);
-      return packedPlan;
-    } finally {
-      SysUtils.closeIgnoringExceptions(packing);
-    }
+    IRepacking algo = getRepackingClass(Context.repackingClass(config));
+    return ScaleUpResolver
+        .buildNewPackingPlan(changeRequest, currentPackingPlan, topologyProvider, config, algo);
   }
 
   @VisibleForTesting
@@ -205,6 +152,37 @@ public class ScaleDownResolver implements IResolver {
           "Failed to instantiate packing instance: " + repackingClass, e);
     }
     return packing;
+  }
+
+  @VisibleForTesting
+  int computeScaleDownFactor(ComponentMetrics componentMetrics, Symptom symptom) {
+    String componentName = componentMetrics.getComponentNames().iterator().next();
+    int parallelism = 0;
+    int currentNoInstances = getInstanceCount(componentMetrics);
+    if (symptom.getSymptomName().equals(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text())) {
+      parallelism = (int) Math.ceil(currentNoInstances * (100 -
+          scaleDownConf) / 100.0);
+    } else if (symptom.getSymptomName().equals(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text())) {
+      int currentTotalProcessingRate = 0;
+      double maxProcessingRateObserved = symptom.getStats().get(componentName).getMetricAvg();
+      ComponentMetrics exeCountMetrics = componentMetrics.filterByMetric(METRIC_EXE_COUNT.text());
+      for (InstanceMetrics instanceMetrics : exeCountMetrics.getMetrics()) {
+        Double metricValue = instanceMetrics.getValueSum();
+        currentTotalProcessingRate += metricValue;
+      }
+      System.out.println(maxProcessingRateObserved + " " + currentTotalProcessingRate);
+      parallelism = (int) Math.ceil(currentTotalProcessingRate / maxProcessingRateObserved);
+    }
+
+    LOG.info(String.format("Component's, %s new parallelism is: %d",
+        componentName, parallelism));
+    return parallelism;
+  }
+
+  private int getInstanceCount(ComponentMetrics componentMetrics) {
+    return (int) componentMetrics.getMetrics().stream()
+        .map(InstanceInfo::getInstanceName)
+        .distinct().count();
   }
 
   @VisibleForTesting
