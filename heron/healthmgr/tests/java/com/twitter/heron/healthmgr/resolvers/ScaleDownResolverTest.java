@@ -138,7 +138,6 @@ public class ScaleDownResolverTest {
 
   @Test
   public void testResolveNoSymptom() {
-
     HealthPolicyConfig healthconfig = mock(HealthPolicyConfig.class);
     when(healthconfig.getConfig(CONF_SCALE_DOWN, 5)).thenReturn(10);
 
@@ -182,9 +181,9 @@ public class ScaleDownResolverTest {
     metrics.addMetric("bolt", "i1", BUFFER_SIZE, 1);
     metrics.addMetric("bolt", "i2", BUFFER_SIZE, 1);
 
-    int result = resolver.computeScaleDownFactor(metrics, new Symptom(
-        SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text(), metrics, new MetricsStats(BUFFER_SIZE, 0, 0,
-        0)));
+    Symptom symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text(), metrics);
+    symptom.addStats("bolt", new MetricsStats(BUFFER_SIZE, 0, 0, 0));
+    int result = resolver.computeScaleDownFactor(metrics, symptom);
     assertEquals(1, result);
 
     metrics = new ComponentMetrics();
@@ -192,9 +191,9 @@ public class ScaleDownResolverTest {
     metrics.addMetric("bolt", "i2", EXE_COUNT, 100);
     metrics.addMetric("bolt", "i3", EXE_COUNT, 100);
 
-    result = resolver.computeScaleDownFactor(metrics,
-        new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics, new MetricsStats
-            (EXE_COUNT, 0, 0, 600)));
+    symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics);
+    symptom.addStats("bolt", new MetricsStats(EXE_COUNT, 0, 0, 600));
+    result = resolver.computeScaleDownFactor(metrics, symptom);
     assertEquals(1, result);
 
     metrics = new ComponentMetrics();
@@ -202,9 +201,9 @@ public class ScaleDownResolverTest {
     metrics.addMetric("bolt", "i2", EXE_COUNT, 150);
     metrics.addMetric("bolt", "i3", EXE_COUNT, 150);
 
-    result = resolver.computeScaleDownFactor(metrics,
-        new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics, new MetricsStats
-            (EXE_COUNT, 0, 0, 400)));
+    symptom = new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(), metrics);
+    symptom.addStats("bolt", new MetricsStats(EXE_COUNT, 0, 0, 400));
+    result = resolver.computeScaleDownFactor(metrics, symptom);
     assertEquals(2, result);
   }
 

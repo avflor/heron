@@ -87,8 +87,9 @@ public class UnsaturatedComponentDetector extends BaseDetector {
                 + "average processing " + "rate is %f, previous observed maximum average rate is "
                 + "%f", compName, currentStats.getMetricAvg(),
             processingRateStats.get().getMetricAvg()));
-        result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics,
-            processingRateStats.get()));
+        Symptom symptom = new Symptom(SYMPTOM_UNSATURATEDCOMP_HIGHCONF.text(), compMetrics);
+        symptom.addStats(compName, processingRateStats.get());
+        result.add(symptom);
       } else if (currentStats.getMetricAvg() > 0.8 * processingRateStats.get().getMetricAvg() &&
           currentStats.getMetricAvg() <= processingRateStats.get().getMetricAvg()) {
         LOG.info(String.format("Detected unsaturated component with low confidence %s: current "
@@ -96,8 +97,9 @@ public class UnsaturatedComponentDetector extends BaseDetector {
                 + "%f",
             compName, currentStats.getMetricAvg(),
             processingRateStats.get().getMetricAvg()));
-        result.add(new Symptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF.text(), compMetrics,
-            processingRateStats.get()));
+        Symptom symptom = new Symptom(SYMPTOM_UNSATURATEDCOMP_LOWCONF.text(), compMetrics);
+        symptom.addStats(compName, processingRateStats.get());
+        result.add(symptom);
       }
     }
     return result;

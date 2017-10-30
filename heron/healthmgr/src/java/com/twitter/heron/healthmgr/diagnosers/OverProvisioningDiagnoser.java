@@ -47,8 +47,8 @@ public class OverProvisioningDiagnoser extends BaseDiagnoser {
       for (String component : highConfUnsaturatedComponents.getComponentNames()) {
         if (growingWaitQueueComponents.filterByComponent(component).getMetrics().isEmpty()) {
           resultSymptom = new Symptom(SYMPTOM_OVER_PROVISIONING_UNSATCOMP.text(),
-              highConfUnsaturatedComponents.filterByComponent(component),
-              highConfUnsaturatedComponentsStats.get(component));
+              highConfUnsaturatedComponents.filterByComponent(component));
+          resultSymptom.addStats(component, highConfUnsaturatedComponentsStats.get(component));
           LOG.info(String.format("OVER_PROVISIONING: %s is unsaturated", component));
           continue;
         }
@@ -56,7 +56,7 @@ public class OverProvisioningDiagnoser extends BaseDiagnoser {
     } else if (!lowConfUnsaturatedComponents.getMetrics().isEmpty()) {
       for (String component : lowConfUnsaturatedComponents.getComponentNames()) {
         if (growingWaitQueueComponents.filterByComponent(component).getMetrics().isEmpty()
-            && smallWaitQComponents.filterByComponent(component).getMetrics().size() > 1) {
+            && !smallWaitQComponents.filterByComponent(component).getMetrics().isEmpty()) {
           resultSymptom = new Symptom(SYMPTOM_OVER_PROVISIONING_SMALLWAITQ.text(),
               smallWaitQComponents.filterByComponent(component));
           LOG.info(String.format("OVER_PROVISIONING: %s has a small queue size", component));

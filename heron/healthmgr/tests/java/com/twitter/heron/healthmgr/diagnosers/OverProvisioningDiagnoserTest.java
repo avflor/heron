@@ -96,7 +96,7 @@ public class OverProvisioningDiagnoserTest {
     assertEquals(1, result.getSymptoms().size());
     ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponentMetrics();
     assertEquals(1,
-        data.getMetrics("", "container_1_bolt_0", METRIC_BUFFER_SIZE.text())
+        data.getMetrics("bolt", "container_1_bolt_0", METRIC_BUFFER_SIZE.text())
             .get().getValueSum().intValue());
   }
 
@@ -105,7 +105,7 @@ public class OverProvisioningDiagnoserTest {
     ComponentMetrics data = result.getSymptoms().values().iterator().next().getComponentMetrics();
 
     assertEquals(100,
-        data.getMetrics("", "container_1_bolt_0", METRIC_EXE_COUNT.text())
+        data.getMetrics("bolt", "container_1_bolt_0", METRIC_EXE_COUNT.text())
             .get().getValueSum().intValue());
   }
 }

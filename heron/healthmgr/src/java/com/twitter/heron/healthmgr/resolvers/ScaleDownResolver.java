@@ -86,8 +86,12 @@ public class ScaleDownResolver implements IResolver {
       Symptom overprovisioningSymptom
           = ovUnsatCompSymptom != null ? ovUnsatCompSymptom : ovSmallWaitQSymptom;
 
+      if (overprovisioningSymptom == null) {
+        continue;
+      }
+
       ComponentMetrics componentMetrics = overprovisioningSymptom.getComponentMetrics();
-      if (overprovisioningSymptom == null || componentMetrics.getMetrics().isEmpty()) {
+      if (componentMetrics.getMetrics().isEmpty()) {
         continue;
       }
 
